@@ -12,10 +12,11 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
 
 interface Props {
   players: Player[];
+  selected: string[];
   onAddPlayer: (name: string) => void;
   onRenamePlayer: (id: string, name: string) => void;
   onDeletePlayer: (id: string) => void;
-  onTogglePlayer: (id: string) => void;
+  onToggleSelect: (id: string) => void;
   mode: Mode;
   setMode: (m: Mode) => void;
   categories: CategoryId[];
@@ -26,10 +27,11 @@ interface Props {
 
 export function SetupScreen({
   players,
+  selected,
   onAddPlayer,
   onRenamePlayer,
   onDeletePlayer,
-  onTogglePlayer,
+  onToggleSelect,
   mode,
   setMode,
   categories,
@@ -38,10 +40,13 @@ export function SetupScreen({
   onStart,
 }: Props) {
   const [name, setName] = useState("");
+  const [adding, setAdding] = useState(false);
+  const [editMode, setEditMode] = useState(false);
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState<Player | null>(null);
 
-  const activeCount = players.filter((p) => p.active).length;
+  const activeCount = selected.length;
   const allCats = categories.length === CATEGORIES.length;
 
   const toggleCat = (id: CategoryId) => {
@@ -69,9 +74,25 @@ export function SetupScreen({
 
       {/* Players */}
       <section>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
-          Players ({activeCount} playing)
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/40">
+            Who&apos;s playing? ({activeCount})
+          </h2>
+          {players.length > 0 && (
+            <button
+              onClick={() => {
+                setEditMode((v) => !v);
+                setEditing(null);
+              }}
+              className={`rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-wider ${
+                editMode ? "bg-card-pink text-white" : "bg-white/10 text-white/60"
+              }`}
+            >
+              {editMode ? "Done" : "Edit players"}
+            </button>
+          )}
+        </div>
+
         <div className="flex flex-wrap gap-2">
           {players.map((p) =>
             editing === p.id ? (
@@ -98,56 +119,106 @@ export function SetupScreen({
               <div
                 key={p.id}
                 className={`flex items-center gap-2 rounded-full px-4 py-2.5 text-sm font-bold transition-colors ${
-                  p.active
+                  selected.includes(p.id)
                     ? "bg-card-yellow text-black"
                     : "bg-white/10 text-white/40"
                 }`}
               >
-                <button onClick={() => onTogglePlayer(p.id)} className="max-w-32 truncate">
-                  {p.name}
-                </button>
                 <button
-                  onClick={() => {
-                    setEditing(p.id);
-                    setEditName(p.name);
-                  }}
-                  aria-label={`Rename ${p.name}`}
-                  className="opacity-50"
+                  onClick={() => (editMode ? undefined : onToggleSelect(p.id))}
+                  className="max-w-32 truncate"
                 >
-                  ✎
+                  {selected.includes(p.id) ? `${p.name} ✓` : p.name}
                 </button>
-                <button
-                  onClick={() => onDeletePlayer(p.id)}
-                  aria-label={`Remove ${p.name}`}
-                  className="opacity-50"
-                >
-                  ✕
-                </button>
+                {editMode && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setEditing(p.id);
+                        setEditName(p.name);
+                      }}
+                      aria-label={`Rename ${p.name}`}
+                      className="opacity-60"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      onClick={() => setConfirmDelete(p)}
+                      aria-label={`Delete ${p.name}`}
+                      className="opacity-60"
+                    >
+                      ✕
+                    </button>
+                  </>
+                )}
               </div>
             ),
           )}
+
+          {!adding && (
+            <button
+              onClick={() => setAdding(true)}
+              className="rounded-full bg-white/15 px-4 py-2.5 text-sm font-black text-white"
+            >
+              + ADD PLAYER
+            </button>
+          )}
         </div>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            if (name.trim()) onAddPlayer(name);
-            setName("");
-          }}
-          className="mt-3 flex gap-2"
-        >
-          <input
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Add a player…"
-            className="min-w-0 flex-1 rounded-2xl bg-white/10 px-4 py-3.5 text-base font-semibold text-white placeholder:text-white/30 outline-none focus:bg-white/15"
-          />
-          <button
-            type="submit"
-            className="shrink-0 rounded-2xl bg-white/15 px-5 text-2xl font-black text-white active:scale-95"
+
+        {adding && (
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (name.trim()) onAddPlayer(name);
+              setName("");
+              setAdding(false);
+            }}
+            className="mt-3 flex gap-2"
           >
-            +
-          </button>
-        </form>
+            <input
+              autoFocus
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Player name…"
+              className="min-w-0 flex-1 rounded-2xl bg-white/10 px-4 py-3.5 text-base font-semibold text-white placeholder:text-white/30 outline-none focus:bg-white/15"
+            />
+            <button
+              type="submit"
+              className="shrink-0 rounded-2xl bg-card-lime px-5 text-base font-black text-black active:scale-95"
+            >
+              SAVE
+            </button>
+          </form>
+        )}
+
+        <p className="mt-2 text-xs font-semibold text-white/35">
+          Saved on this device. Tap a name to add or remove them from this game.
+        </p>
+
+        {confirmDelete && (
+          <div className="mt-3 rounded-2xl bg-white/10 p-4">
+            <p className="text-sm font-bold text-white">
+              Delete {confirmDelete.name} from your saved players?
+            </p>
+            <div className="mt-3 flex gap-2">
+              <button
+                onClick={() => {
+                  onDeletePlayer(confirmDelete.id);
+                  setConfirmDelete(null);
+                }}
+                className="rounded-xl bg-card-pink px-4 py-2 text-sm font-black text-white"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(null)}
+                className="rounded-xl bg-white/15 px-4 py-2 text-sm font-black text-white"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Mode */}
@@ -215,7 +286,7 @@ export function SetupScreen({
         </button>
         {activeCount < 2 && (
           <p className="mt-3 text-center text-sm font-semibold text-white/40">
-            Add at least 2 active players to start
+            Select at least 2 players to start
           </p>
         )}
       </div>
