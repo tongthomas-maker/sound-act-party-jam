@@ -21,7 +21,15 @@ import {
   tick,
   unlockAudio,
 } from "@/lib/audio";
-import { loadPlayers, newPlayer, savePlayers, type Player } from "@/lib/players";
+import {
+  loadRoster,
+  loadSelection,
+  newPlayer,
+  saveRoster,
+  saveSelection,
+  type Player,
+} from "@/lib/players";
+import { useTiltControls } from "@/hooks/use-tilt-controls";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -99,18 +107,23 @@ function SoundItGame() {
   const [bestStreak, setBestStreak] = useState(0);
   const lockRef = useRef(false);
 
+  const [selected, setSelected] = useState<string[]>([]);
+
   useEffect(() => {
-    const saved = loadPlayers();
-    setPlayers(
-      saved.length
-        ? saved
-        : [newPlayer("Player 1"), newPlayer("Player 2")],
-    );
+    const roster = loadRoster();
+    setPlayers(roster);
+    const sel = loadSelection().filter((id) => roster.some((p) => p.id === id));
+    setSelected(sel.length ? sel : roster.map((p) => p.id));
   }, []);
 
   const updatePlayers = useCallback((next: Player[]) => {
     setPlayers(next);
-    savePlayers(next);
+    saveRoster(next);
+  }, []);
+
+  const updateSelected = useCallback((next: string[]) => {
+    setSelected(next);
+    saveSelection(next);
   }, []);
 
   const availableCards = useMemo(
@@ -179,11 +192,12 @@ function SoundItGame() {
       setStreak(s);
       setBestStreak((b) => Math.max(b, s));
       setCorrect((c) => c + 1);
-      if (s >= 3) setStamp(`🔥 ${s} IN A ROW!`);
+      setStamp(s >= 3 ? `🔥 ${s} IN A ROW!` : "+1");
     } else {
       skipSound();
       setStreak(0);
       setSkips((s) => s + 1);
+      setStamp("SKIP");
     }
     setTimeout(() => {
       setDeckPos((p) => (p + 1 < deck.length ? p + 1 : 0));
@@ -193,6 +207,13 @@ function SoundItGame() {
     }, 230);
   };
 
+  const tilt = useTiltControls({
+    enabled: phase === "play" && secondsLeft > 0,
+    onUp: () => advance("got"),
+    onDown: () => advance("skip"),
+  });
+
+
   useEffect(() => {
     if (!stamp) return;
     const id = setTimeout(() => setStamp(null), 800);
@@ -201,7 +222,7 @@ function SoundItGame() {
 
   const startGame = () => {
     unlockAudio();
-    const active = players.filter((p) => p.active);
+    const active = players.filter((p) => selected.includes(p.id));
     setOrder(shuffle(active));
     setResults([]);
     setRoundIndex(0);
@@ -271,16 +292,26 @@ function SoundItGame() {
       {phase === "setup" && (
         <SetupScreen
           players={players}
-          onAddPlayer={(n) => updatePlayers([...players, newPlayer(n)])}
+          selected={selected}
+          onAddPlayer={(n) => {
+            const p = newPlayer(n);
+            updatePlayers([...players, p]);
+            updateSelected([...selected, p.id]);
+          }}
           onRenamePlayer={(id, n) =>
             updatePlayers(
               players.map((p) => (p.id === id ? { ...p, name: n.trim() } : p)),
             )
           }
-          onDeletePlayer={(id) => updatePlayers(players.filter((p) => p.id !== id))}
-          onTogglePlayer={(id) =>
-            updatePlayers(
-              players.map((p) => (p.id === id ? { ...p, active: !p.active } : p)),
+          onDeletePlayer={(id) => {
+            updatePlayers(players.filter((p) => p.id !== id));
+            updateSelected(selected.filter((s) => s !== id));
+          }}
+          onToggleSelect={(id) =>
+            updateSelected(
+              selected.includes(id)
+                ? selected.filter((s) => s !== id)
+                : [...selected, id],
             )
           }
           mode={mode}
@@ -394,6 +425,24 @@ function SoundItGame() {
               </div>
             )}
           </div>
+
+          {/* motion toggle */}
+          {tilt.supported && (
+            <div className="px-3 pt-2 text-center">
+              <button
+                onClick={() => void tilt.toggleMotion()}
+                className={`rounded-full px-4 py-2 text-xs font-black uppercase tracking-wider ${
+                  tilt.motionOn ? "bg-card-blue text-white" : "bg-white/10 text-white/50"
+                }`}
+              >
+                {tilt.motionOn
+                  ? "📱 Tilt on — up = got it, down = skip"
+                  : tilt.permission === "denied"
+                    ? "📱 Motion blocked — use buttons"
+                    : "📱 Use tilt controls"}
+              </button>
+            </div>
+          )}
 
           {/* controls */}
           <div className="grid grid-cols-[1fr_1.4fr] gap-3 px-3 pb-3 pt-3">

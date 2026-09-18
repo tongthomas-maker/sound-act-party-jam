@@ -164,7 +164,7 @@
 }
 @keyframes si-slide-out {
   to {
-    transform: translateX(-130%) rotate(-14deg);
+    transform: translateY(60%) rotate(-8deg);
     opacity: 0;
   }
 }
