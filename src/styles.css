@@ -132,6 +132,18 @@
   --sidebar-ring: oklch(0.551 0.027 264.364);
 }
 
+@theme {
+  --font-display: "Anton", "Archivo Black", system-ui, sans-serif;
+  --font-body: "Archivo", system-ui, sans-serif;
+  --color-stage: #0a0a0c;
+  --color-card-yellow: #ffe01b;
+  --color-card-purple: #8b3dff;
+  --color-card-blue: #1f6bff;
+  --color-card-lime: #9ef01a;
+  --color-card-pink: #ff2d95;
+  --color-card-orange: #ff6b00;
+}
+
 @layer base {
   * {
     border-color: var(--color-border);
@@ -140,5 +152,77 @@
   body {
     background-color: var(--color-background);
     color: var(--color-foreground);
+    font-family: var(--font-body);
   }
+}
+
+@keyframes si-flip-out {
+  to {
+    transform: translateY(-120%) rotateX(70deg) scale(0.8);
+    opacity: 0;
+  }
+}
+@keyframes si-slide-out {
+  to {
+    transform: translateX(-130%) rotate(-14deg);
+    opacity: 0;
+  }
+}
+@keyframes si-card-in {
+  from {
+    transform: translateY(40px) scale(0.94);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes si-stamp {
+  0% {
+    transform: scale(2.2) rotate(-18deg);
+    opacity: 0;
+  }
+  30% {
+    transform: scale(1) rotate(-8deg);
+    opacity: 1;
+  }
+  80% {
+    transform: scale(1) rotate(-8deg);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.15) rotate(-8deg);
+    opacity: 0;
+  }
+}
+@keyframes si-pop {
+  from {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  60% {
+    transform: scale(1.15);
+    opacity: 1;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+@utility si-flip-out {
+  animation: si-flip-out 0.28s cubic-bezier(0.4, 0, 0.9, 0.3) forwards;
+}
+@utility si-slide-out {
+  animation: si-slide-out 0.24s cubic-bezier(0.4, 0, 0.9, 0.3) forwards;
+}
+@utility si-card-in {
+  animation: si-card-in 0.22s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@utility si-stamp {
+  animation: si-stamp 0.8s ease-out forwards;
+}
+@utility si-pop {
+  animation: si-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
