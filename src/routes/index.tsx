@@ -21,7 +21,15 @@ import {
   tick,
   unlockAudio,
 } from "@/lib/audio";
-import { loadPlayers, newPlayer, savePlayers, type Player } from "@/lib/players";
+import {
+  loadRoster,
+  loadSelection,
+  newPlayer,
+  saveRoster,
+  saveSelection,
+  type Player,
+} from "@/lib/players";
+import { useTiltControls } from "@/hooks/use-tilt-controls";
 
 export const Route = createFileRoute("/")({
   head: () => ({
