@@ -14,10 +14,18 @@ import {
   countdownBeep,
   fanfare,
   gotItSound,
+  heartbeat,
   isMuted,
+  isMusicEnabled,
+  isSfxEnabled,
   revealChime,
   setMuted,
+  setMusicEnabled,
+  setMusicIntensity,
+  setSfxEnabled,
   skipSound,
+  startMusic,
+  stopMusic,
   tick,
   unlockAudio,
 } from "@/lib/audio";
@@ -30,12 +38,19 @@ import {
   type Player,
 } from "@/lib/players";
 import { useTiltControls } from "@/hooks/use-tilt-controls";
+import { useFullscreen, useIsLandscape } from "@/hooks/use-fullscreen";
+import {
+  drawQuickCallCard,
+  QUICK_CALL_CATEGORY_IDS,
+  type QuickCallCard,
+} from "@/lib/quickcall";
 import {
   hapticGotIt,
   hapticPass,
   hapticSkip,
   hapticTimeUp,
 } from "@/lib/haptics";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -57,7 +72,15 @@ export const Route = createFileRoute("/")({
   component: SoundItGame,
 });
 
-type Phase = "setup" | "announce" | "countdown" | "play" | "summary" | "final";
+type Phase =
+  | "setup"
+  | "announce"
+  | "ready"
+  | "countdown"
+  | "play"
+  | "summary"
+  | "final";
+
 
 const CARD_COLORS = [
   "var(--color-card-yellow)",
@@ -69,6 +92,8 @@ const CARD_COLORS = [
 ];
 const DARK_TEXT_ON = [0, 3]; // yellow, lime
 const ROUND_SECONDS = 60;
+const PRESSURE_SECONDS = 15; // psychological pressure phase length
+
 
 interface RoundResult {
   playerId: string;
@@ -115,6 +140,21 @@ function SoundItGame() {
 
   const [selected, setSelected] = useState<string[]>([]);
 
+  /* ---------- Quick Call ---------- */
+  const [qcCategories, setQcCategories] = useState<string[]>(QUICK_CALL_CATEGORY_IDS);
+  const [qcCard, setQcCard] = useState<QuickCallCard | null>(null);
+  const qcRecent = useRef<string[]>([]);
+  const isQC = mode === "quickcall";
+  const fullscreen = useFullscreen();
+  const landscape = useIsLandscape();
+
+  const drawQC = useCallback(() => {
+    const next = drawQuickCallCard(qcCategories, qcRecent.current);
+    if (!next) return;
+    qcRecent.current = [...qcRecent.current, next.key].slice(-10);
+    setQcCard(next);
+  }, [qcCategories]);
+
   useEffect(() => {
     const roster = loadRoster();
     setPlayers(roster);
@@ -133,13 +173,18 @@ function SoundItGame() {
   }, []);
 
   const availableCards = useMemo(
-    () => filterCards(mode, categories.length === CATEGORIES.length ? "all" : categories),
+    () =>
+      filterCards(
+        mode === "quickcall" ? "mix" : mode,
+        categories.length === CATEGORIES.length ? "all" : categories,
+      ),
     [mode, categories],
   );
 
   const guesser = order[roundIndex];
   const nextGuesser = order[roundIndex + 1];
   const card = deck[deckPos];
+
 
   /* ---------- countdown ---------- */
   useEffect(() => {
@@ -162,30 +207,56 @@ function SoundItGame() {
     return () => clearInterval(id);
   }, [phase]);
 
-  /* ---------- master timer ---------- */
+  /* ---------- master timer (+ Sound V2 pressure) ---------- */
   useEffect(() => {
     if (phase !== "play") return;
     setSecondsLeft(ROUND_SECONDS);
     let left = ROUND_SECONDS;
-    let timeout: ReturnType<typeof setTimeout>;
+    startMusic();
+    setMusicIntensity(1);
 
-    const step = () => {
+    let tickTimer: ReturnType<typeof setTimeout>;
+    let beatCount = 0;
+
+    const tickLoop = () => {
+      if (left <= 0) return;
+      if (left <= 5) tick(2);
+      else if (left <= 10) tick(2);
+      else if (left <= PRESSURE_SECONDS) tick(1);
+      else tick(0);
+
+      if (left <= PRESSURE_SECONDS) {
+        beatCount += 1;
+        if (left <= 6 || beatCount % 2 === 0)
+          heartbeat(left <= 6 ? 1.2 : 0.8);
+      }
+      const gap = left <= 5 ? 220 : left <= 10 ? 380 : left <= PRESSURE_SECONDS ? 600 : 1000;
+      tickTimer = setTimeout(tickLoop, gap);
+    };
+    tickTimer = setTimeout(tickLoop, 1000);
+
+    const secInterval = setInterval(() => {
       left -= 1;
       setSecondsLeft(left);
+      setMusicIntensity(
+        left > PRESSURE_SECONDS ? 1 : Math.max(0, left / PRESSURE_SECONDS) * 0.85,
+      );
       if (left <= 0) {
+        clearInterval(secInterval);
+        clearTimeout(tickTimer);
+        stopMusic();
         buzzer();
         hapticTimeUp();
         lockRef.current = true;
         setPhase("summary");
-        return;
       }
-      if (left <= 5) tick(2);
-      else if (left <= 10) tick(1);
-      else tick(0);
-      timeout = setTimeout(step, left <= 5 ? 400 : left <= 10 ? 700 : 1000);
+    }, 1000);
+
+    return () => {
+      clearInterval(secInterval);
+      clearTimeout(tickTimer);
+      stopMusic();
     };
-    timeout = setTimeout(step, 1000);
-    return () => clearTimeout(timeout);
   }, [phase]);
 
   /* ---------- actions ---------- */
@@ -209,7 +280,8 @@ function SoundItGame() {
       setStamp("SKIP");
     }
     setTimeout(() => {
-      setDeckPos((p) => (p + 1 < deck.length ? p + 1 : 0));
+      if (isQC) drawQC();
+      else setDeckPos((p) => (p + 1 < deck.length ? p + 1 : 0));
       setCardIndex((i) => i + 1);
       setExit(null);
       lockRef.current = false;
@@ -240,16 +312,23 @@ function SoundItGame() {
 
   const beginRound = () => {
     unlockAudio();
-    setDeck(shuffle(availableCards));
-    setDeckPos(0);
     setCardIndex(0);
     setCorrect(0);
     setSkips(0);
     setStreak(0);
     setBestStreak(0);
     lockRef.current = false;
+    if (isQC) {
+      qcRecent.current = [];
+      drawQC();
+      setPhase("ready");
+      return;
+    }
+    setDeck(shuffle(availableCards));
+    setDeckPos(0);
     setPhase("countdown");
   };
+
 
   // record result when entering summary
   const recordedRef = useRef(-1);
@@ -328,6 +407,9 @@ function SoundItGame() {
           setMode={setMode}
           categories={categories}
           setCategories={setCategories}
+          qcCategories={qcCategories}
+          setQcCategories={setQcCategories}
+
           cardCount={availableCards.length}
           onStart={startGame}
         />
@@ -344,16 +426,23 @@ function SoundItGame() {
           >
             {guesser.name.toUpperCase()} IS GUESSING!
           </h2>
-          <p className="max-w-sm text-lg font-bold text-white/70">
-            {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else: pass the
-            phone around and{" "}
-            {mode === "sound"
-              ? "make the sounds"
-              : mode === "act"
-                ? "act it out"
-                : "follow each card's badge"}
-            . No words!
-          </p>
+          {isQC ? (
+            <p className="max-w-sm text-lg font-bold text-white/70">
+              {guesser.name}, you&apos;re answering! Everyone else reads the card and
+              judges the answers. Category + letter — say one out loud, fast.
+            </p>
+          ) : (
+            <p className="max-w-sm text-lg font-bold text-white/70">
+              {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else: pass the
+              phone around and{" "}
+              {mode === "sound"
+                ? "make the sounds"
+                : mode === "act"
+                  ? "act it out"
+                  : "follow each card's badge"}
+              . No words!
+            </p>
+          )}
           <button
             onClick={beginRound}
             className="mt-4 w-full max-w-sm rounded-3xl bg-card-lime py-6 text-3xl font-black text-black active:scale-[0.98]"
@@ -361,6 +450,7 @@ function SoundItGame() {
           >
             READY!
           </button>
+
         </div>
       )}
 
@@ -376,7 +466,40 @@ function SoundItGame() {
         </div>
       )}
 
-      {phase === "play" && card && (
+      {phase === "ready" && guesser && (
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+          <h2
+            className="si-pop text-[13vw] leading-none text-card-orange"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {guesser.name.toUpperCase()} IS UP
+          </h2>
+          <p className="text-lg font-black text-white/70">
+            {landscape ? "✅ Sideways — perfect" : "↔️ Turn sideways to play"}
+          </p>
+          {!fullscreen.isFullscreen && fullscreen.supported && (
+            <>
+              <p className="text-sm font-bold text-white/40">Best played full screen</p>
+              <button
+                onClick={() => void fullscreen.expand()}
+                className="rounded-3xl bg-white/12 px-8 py-4 text-lg font-black text-white"
+              >
+                ⛶ EXPAND SCREEN
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setPhase("countdown")}
+            className="mt-2 w-full max-w-sm rounded-3xl bg-card-lime py-6 text-3xl font-black text-black active:scale-[0.98]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            START ROUND
+          </button>
+        </div>
+      )}
+
+      {phase === "play" && !isQC && card && (
+
         <div className="flex min-h-dvh flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
           {/* status strip */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
@@ -474,11 +597,119 @@ function SoundItGame() {
         </div>
       )}
 
+      {/* ⚡ QUICK CALL — landscape-first active card */}
+      {phase === "play" && isQC && qcCard && (
+        <div
+          className={`flex min-h-dvh flex-col px-2 pt-[env(safe-area-inset-top)] pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+            secondsLeft <= PRESSURE_SECONDS ? "si-pressure" : ""
+          }`}
+        >
+          {/* status strip */}
+          <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-black">
+            <span className="rounded-full bg-white/10 px-3 py-1">🔥 {streak}</span>
+            <span
+              className={`rounded-full px-3 py-1 tabular-nums ${
+                secondsLeft <= PRESSURE_SECONDS
+                  ? "si-urgent bg-card-pink text-white"
+                  : "bg-white/10"
+              }`}
+            >
+              ⏱ 0:{String(Math.max(secondsLeft, 0)).padStart(2, "0")}
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1">✓ {correct}</span>
+            <span className="ml-auto truncate pr-10 uppercase tracking-wider text-white/40">
+              {guesser?.name}
+            </span>
+          </div>
+
+          <div className="relative flex flex-1 items-stretch gap-2">
+            <div
+              key={cardIndex}
+              className={`si-card-in flex flex-1 items-center gap-4 rounded-[2rem] px-4 py-3 ${
+                exit === "got" ? "si-flip-out" : exit === "skip" ? "si-slide-out" : ""
+              }`}
+              style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
+            >
+              <div
+                className="flex shrink-0 items-center justify-center leading-none"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "min(34vw, 66vh)",
+                }}
+              >
+                {qcCard.letter}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 text-left">
+                <div
+                  className="truncate text-[clamp(1.1rem,4.5vh,2.2rem)] leading-none opacity-80"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {qcCard.emoji} {qcCard.categoryName}
+                </div>
+                <div className="text-[clamp(1rem,4vh,1.9rem)] font-black leading-tight">
+                  {qcCard.prompt}
+                </div>
+              </div>
+            </div>
+
+            {/* controls — fixed right rail, always available */}
+            <div className="flex w-[26vw] max-w-44 shrink-0 flex-col gap-2 py-1">
+              <button
+                onClick={() => advance("got")}
+                className="flex-[1.5] rounded-3xl bg-card-lime text-2xl font-black text-black active:scale-[0.97]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                ✓ GOT IT!
+              </button>
+              <button
+                onClick={() => advance("skip")}
+                className="flex-1 rounded-3xl bg-white/12 text-xl font-black text-white/80 active:scale-[0.97]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                SKIP
+              </button>
+            </div>
+
+            {stamp && (
+              <div
+                className="si-stamp pointer-events-none absolute inset-0 flex items-center justify-center text-[14vh] font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {stamp}
+              </div>
+            )}
+          </div>
+
+          {tilt.supported && (
+            <div className="pt-1 text-center">
+              <button
+                onClick={() => void tilt.toggleMotion()}
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                  tilt.motionOn ? "bg-card-blue text-white" : "bg-white/10 text-white/50"
+                }`}
+              >
+                {tilt.motionOn
+                  ? "📱 Tilt on — up = got it, down = skip"
+                  : tilt.permission === "denied"
+                    ? "📱 Motion blocked — use buttons"
+                    : "📱 Use tilt controls"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+
+
       {phase === "summary" && guesser && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
-          <p className="text-sm font-black uppercase tracking-[0.3em] text-white/40">
-            Time&apos;s up
+          <p
+            className="si-pop text-[16vw] leading-none text-card-pink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            TIME!
           </p>
+
           <h2
             className="text-[14vw] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}

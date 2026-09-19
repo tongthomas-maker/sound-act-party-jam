@@ -1,5 +1,15 @@
 /** Progressive-enhancement haptics. Silent no-op where unsupported. */
+let hapticsOn = true;
+
+export function setHapticsEnabled(on: boolean) {
+  hapticsOn = on;
+}
+export function isHapticsEnabled() {
+  return hapticsOn;
+}
+
 function buzz(pattern: number | number[]) {
+  if (!hapticsOn) return;
   if (typeof navigator === "undefined") return;
   const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
   if (typeof nav.vibrate !== "function") return;
@@ -9,6 +19,7 @@ function buzz(pattern: number | number[]) {
     /* ignore */
   }
 }
+
 
 export function hapticsSupported() {
   if (typeof navigator === "undefined") return false;

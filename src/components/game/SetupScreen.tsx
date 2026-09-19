@@ -1,13 +1,27 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CATEGORIES, type CategoryId } from "@/lib/cards";
 import type { Player } from "@/lib/players";
+import { QUICK_CALL_CATEGORIES, quickCallPoolSize } from "@/lib/quickcall";
+import {
+  isMusicEnabled,
+  isSfxEnabled,
+  setMusicEnabled,
+  setSfxEnabled,
+} from "@/lib/audio";
+import { isHapticsEnabled, setHapticsEnabled } from "@/lib/haptics";
 
-export type Mode = "sound" | "act" | "mix";
+
+export type Mode = "sound" | "act" | "mix" | "quickcall";
 
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "sound", label: "🔊 SOUND IT", hint: "Sounds only. No words, no acting." },
   { id: "act", label: "🎭 ACT IT", hint: "Actions only. No words, no sounds." },
   { id: "mix", label: "🔀 MIX IT", hint: "Everything shuffled together." },
+  {
+    id: "quickcall",
+    label: "⚡ QUICK CALL",
+    hint: "Category + letter. Say an answer fast. Played sideways.",
+  },
 ];
 
 interface Props {
@@ -21,9 +35,12 @@ interface Props {
   setMode: (m: Mode) => void;
   categories: CategoryId[];
   setCategories: (c: CategoryId[]) => void;
+  qcCategories: string[];
+  setQcCategories: (c: string[]) => void;
   cardCount: number;
   onStart: () => void;
 }
+
 
 export function SetupScreen({
   players,
@@ -36,6 +53,9 @@ export function SetupScreen({
   setMode,
   categories,
   setCategories,
+  qcCategories,
+  setQcCategories,
+
   cardCount,
   onStart,
 }: Props) {
@@ -45,9 +65,19 @@ export function SetupScreen({
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Player | null>(null);
+  const [music, setMusic] = useState(isMusicEnabled());
+  const [sfx, setSfx] = useState(isSfxEnabled());
+  const [hap, setHap] = useState(isHapticsEnabled());
+
+  useEffect(() => setMusicEnabled(music), [music]);
+  useEffect(() => setSfxEnabled(sfx), [sfx]);
+  useEffect(() => setHapticsEnabled(hap), [hap]);
 
   const activeCount = selected.length;
   const allCats = categories.length === CATEGORIES.length;
+  const canStart =
+    activeCount >= 2 && (mode !== "quickcall" || qcCategories.length > 0);
+
 
   const toggleCat = (id: CategoryId) => {
     if (categories.includes(id)) {
@@ -243,53 +273,132 @@ export function SetupScreen({
       </section>
 
       {/* Categories */}
-      <section>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
-          Categories
-        </h2>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setCategories(CATEGORIES.map((c) => c.id))}
-            className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-black ${
-              allCats ? "bg-card-lime text-black" : "bg-white/8 text-white/70"
-            }`}
-          >
-            ✨ ALL CATEGORIES
-          </button>
-          {CATEGORIES.map((c) => (
+      {mode === "quickcall" ? (
+        <section>
+          <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+            Quick Call categories
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {QUICK_CALL_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() =>
+                  setQcCategories(
+                    qcCategories.includes(c.id)
+                      ? qcCategories.filter((x) => x !== c.id)
+                      : [...qcCategories, c.id],
+                  )
+                }
+                className={`rounded-2xl px-4 py-5 text-sm font-black ${
+                  qcCategories.includes(c.id)
+                    ? "bg-card-orange text-white"
+                    : "bg-white/8 text-white/50"
+                }`}
+              >
+                {c.emoji} {c.name}
+                {qcCategories.includes(c.id) ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button
-              key={c.id}
-              onClick={() => toggleCat(c.id)}
-              className={`rounded-2xl px-4 py-4 text-sm font-black ${
-                categories.includes(c.id)
-                  ? "bg-card-blue text-white"
-                  : "bg-white/8 text-white/50"
+              onClick={() => setQcCategories(QUICK_CALL_CATEGORIES.map((c) => c.id))}
+              className="rounded-2xl bg-white/12 px-4 py-3 text-sm font-black text-white"
+            >
+              SELECT ALL
+            </button>
+            <button
+              onClick={() => setQcCategories([])}
+              className="rounded-2xl bg-white/8 px-4 py-3 text-sm font-black text-white/60"
+            >
+              CLEAR ALL
+            </button>
+          </div>
+          <p className="mt-2 text-center text-xs font-semibold text-white/35">
+            {qcCategories.length
+              ? `${quickCallPoolSize(qcCategories)} category + letter combos`
+              : "Pick at least one category"}
+          </p>
+        </section>
+      ) : (
+        <section>
+          <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+            Categories
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setCategories(CATEGORIES.map((c) => c.id))}
+              className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-black ${
+                allCats ? "bg-card-lime text-black" : "bg-white/8 text-white/70"
               }`}
             >
-              {c.emoji} {c.label}
+              ✨ ALL CATEGORIES
+            </button>
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => toggleCat(c.id)}
+                className={`rounded-2xl px-4 py-4 text-sm font-black ${
+                  categories.includes(c.id)
+                    ? "bg-card-blue text-white"
+                    : "bg-white/8 text-white/50"
+                }`}
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-xs font-semibold text-white/35">
+            {cardCount} cards in this deck
+          </p>
+        </section>
+      )}
+
+      {/* Audio & feedback */}
+      <section>
+        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+          Sound &amp; feedback
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["🎵 Music", music, () => setMusic((v) => !v)],
+              ["🔊 Effects", sfx, () => setSfx((v) => !v)],
+              ["📳 Haptics", hap, () => setHap((v) => !v)],
+            ] as const
+          ).map(([label, on, toggle]) => (
+            <button
+              key={label}
+              onClick={toggle}
+              className={`rounded-2xl px-2 py-3 text-xs font-black ${
+                on ? "bg-card-blue text-white" : "bg-white/8 text-white/40"
+              }`}
+            >
+              {label}
+              <span className="block text-[10px] opacity-70">{on ? "ON" : "OFF"}</span>
             </button>
           ))}
         </div>
-        <p className="mt-2 text-center text-xs font-semibold text-white/35">
-          {cardCount} cards in this deck
-        </p>
       </section>
 
       <div className="mt-auto pt-2">
         <button
-          disabled={activeCount < 2}
+          disabled={!canStart}
           onClick={onStart}
           className="w-full rounded-3xl bg-card-lime py-6 text-3xl font-black text-black transition-transform active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30"
           style={{ fontFamily: "var(--font-display)" }}
         >
           START GAME
         </button>
-        {activeCount < 2 && (
+        {!canStart && (
           <p className="mt-3 text-center text-sm font-semibold text-white/40">
-            Select at least 2 players to start
+            {activeCount < 2
+              ? "Select at least 2 players to start"
+              : "Pick at least one Quick Call category"}
           </p>
         )}
       </div>
+
     </div>
   );
 }
