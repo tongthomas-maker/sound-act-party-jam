@@ -1,6 +1,8 @@
 let ctx: AudioContext | null = null;
 let master: GainNode | null = null;
 let muted = false;
+let sfxOn = true;
+let musicOn = true;
 
 function ensure(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -40,6 +42,21 @@ export function isMuted() {
   return muted;
 }
 
+/* ---------- independent channel toggles ---------- */
+export function setSfxEnabled(on: boolean) {
+  sfxOn = on;
+}
+export function isSfxEnabled() {
+  return sfxOn;
+}
+export function setMusicEnabled(on: boolean) {
+  musicOn = on;
+  if (!on) stopMusic();
+}
+export function isMusicEnabled() {
+  return musicOn;
+}
+
 function tone(
   freq: number,
   dur: number,
@@ -48,6 +65,7 @@ function tone(
   when = 0,
   freqEnd?: number,
 ) {
+  if (!sfxOn) return;
   const c = ensure();
   if (!c || !master) return;
   const t = c.currentTime + when;
@@ -82,6 +100,7 @@ export function revealChime() {
 
 /** Soft mechanical woodblock tick */
 export function tick(intensity: 0 | 1 | 2 = 0) {
+  if (!sfxOn) return;
   const c = ensure();
   if (!c || !master) return;
   const t = c.currentTime;
@@ -102,6 +121,34 @@ export function tick(intensity: 0 | 1 | 2 = 0) {
   g.connect(master);
   osc.start(t);
   osc.stop(t + 0.1);
+}
+
+/** Low pressure pulse — felt rather than heard as a literal heartbeat. */
+export function heartbeat(intensity = 1) {
+  if (!sfxOn) return;
+  const c = ensure();
+  if (!c || !master) return;
+  const thump = (when: number, gain: number) => {
+    const t = c.currentTime + when;
+    const osc = c.createOscillator();
+    const g = c.createGain();
+    const lp = c.createBiquadFilter();
+    lp.type = "lowpass";
+    lp.frequency.value = 120;
+    osc.type = "sine";
+    osc.frequency.setValueAtTime(78, t);
+    osc.frequency.exponentialRampToValueAtTime(42, t + 0.16);
+    g.gain.setValueAtTime(0.0001, t);
+    g.gain.exponentialRampToValueAtTime(gain, t + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, t + 0.22);
+    osc.connect(lp);
+    lp.connect(g);
+    g.connect(master as GainNode);
+    osc.start(t);
+    osc.stop(t + 0.3);
+  };
+  thump(0, 0.3 * intensity);
+  thump(0.18, 0.2 * intensity);
 }
 
 export function gotItSound() {
@@ -144,7 +191,86 @@ export function fanfare() {
   );
 }
 
+/* ---------- Sound V2: light instrumental game bed ---------- */
+
+let musicGain: GainNode | null = null;
+let musicTimer: ReturnType<typeof setInterval> | null = null;
+let musicStep = 0;
+let musicDuck = 1;
+
+const BASS = [55, 55, 73.42, 65.41]; // A1 A1 D2 C2 — per bar
+const ARP = [440, 659.25, 554.37, 659.25, 493.88, 739.99, 587.33, 493.88];
+
+function musicNote(freq: number, dur: number, type: OscillatorType, gain: number) {
+  const c = ctx;
+  if (!c || !musicGain) return;
+  const t = c.currentTime;
+  const osc = c.createOscillator();
+  const g = c.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(gain, t + 0.015);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  osc.connect(g);
+  g.connect(musicGain);
+  osc.start(t);
+  osc.stop(t + dur + 0.05);
+}
+
+/** Start the light, vocal-free energy bed. Safe to call repeatedly. */
+export function startMusic() {
+  if (!musicOn || musicTimer) return;
+  const c = ensure();
+  if (!c || !master) return;
+  musicGain = c.createGain();
+  musicGain.gain.value = 0.16;
+  musicDuck = 1;
+  musicGain.connect(master);
+  musicStep = 0;
+
+  const STEP_MS = 200; // ~150 bpm eighth notes
+  musicTimer = setInterval(() => {
+    const s = musicStep % 8;
+    if (s === 0 || s === 4) {
+      const bar = Math.floor(musicStep / 8) % BASS.length;
+      musicNote(BASS[bar] as number, 0.26, "triangle", 0.5);
+    }
+    if (s % 2 === 0) musicNote(ARP[s] as number, 0.12, "square", 0.075);
+    else musicNote((ARP[s] as number) * 2, 0.06, "square", 0.03);
+    if (s === 2 || s === 6) musicNote(1200, 0.035, "triangle", 0.05); // light hat
+    musicStep += 1;
+  }, STEP_MS);
+}
+
+/** Duck the bed toward silence as pressure builds (1 = full, 0 = out). */
+export function setMusicIntensity(level: number) {
+  musicDuck = Math.max(0, Math.min(1, level));
+  if (musicGain && ctx)
+    musicGain.gain.setTargetAtTime(0.16 * musicDuck, ctx.currentTime, 0.25);
+}
+
+export function stopMusic() {
+  if (musicTimer) {
+    clearInterval(musicTimer);
+    musicTimer = null;
+  }
+  if (musicGain && ctx) {
+    musicGain.gain.setTargetAtTime(0.0001, ctx.currentTime, 0.12);
+    const g = musicGain;
+    musicGain = null;
+    setTimeout(() => {
+      try {
+        g.disconnect();
+      } catch {
+        /* ignore */
+      }
+    }, 600);
+  }
+}
+
 export function stopAll() {
+  stopMusic();
   if (!ctx) return;
   void ctx.close();
   ctx = null;
