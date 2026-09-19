@@ -226,3 +226,30 @@
 @utility si-pop {
   animation: si-pop 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
+
+/* ---- visual pressure system ---- */
+@keyframes si-pressure {
+  0%,
+  100% {
+    box-shadow: inset 0 0 0 0 rgba(255, 45, 149, 0);
+  }
+  50% {
+    box-shadow: inset 0 0 44px 10px rgba(255, 45, 149, 0.4);
+  }
+}
+@keyframes si-urgent {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+@utility si-pressure {
+  animation: si-pressure 1s ease-in-out infinite;
+}
+@utility si-urgent {
+  animation: si-urgent 0.7s ease-in-out infinite;
+}
+
