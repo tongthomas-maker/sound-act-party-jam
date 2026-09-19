@@ -205,30 +205,56 @@ function SoundItGame() {
     return () => clearInterval(id);
   }, [phase]);
 
-  /* ---------- master timer ---------- */
+  /* ---------- master timer (+ Sound V2 pressure) ---------- */
   useEffect(() => {
     if (phase !== "play") return;
     setSecondsLeft(ROUND_SECONDS);
     let left = ROUND_SECONDS;
-    let timeout: ReturnType<typeof setTimeout>;
+    startMusic();
+    setMusicIntensity(1);
 
-    const step = () => {
+    let tickTimer: ReturnType<typeof setTimeout>;
+    let beatCount = 0;
+
+    const tickLoop = () => {
+      if (left <= 0) return;
+      if (left <= 5) tick(2);
+      else if (left <= 10) tick(2);
+      else if (left <= PRESSURE_SECONDS) tick(1);
+      else tick(0);
+
+      if (left <= PRESSURE_SECONDS) {
+        beatCount += 1;
+        if (left <= 6 || beatCount % 2 === 0)
+          heartbeat(left <= 6 ? 1.2 : 0.8);
+      }
+      const gap = left <= 5 ? 220 : left <= 10 ? 380 : left <= PRESSURE_SECONDS ? 600 : 1000;
+      tickTimer = setTimeout(tickLoop, gap);
+    };
+    tickTimer = setTimeout(tickLoop, 1000);
+
+    const secInterval = setInterval(() => {
       left -= 1;
       setSecondsLeft(left);
+      setMusicIntensity(
+        left > PRESSURE_SECONDS ? 1 : Math.max(0, left / PRESSURE_SECONDS) * 0.85,
+      );
       if (left <= 0) {
+        clearInterval(secInterval);
+        clearTimeout(tickTimer);
+        stopMusic();
         buzzer();
         hapticTimeUp();
         lockRef.current = true;
         setPhase("summary");
-        return;
       }
-      if (left <= 5) tick(2);
-      else if (left <= 10) tick(1);
-      else tick(0);
-      timeout = setTimeout(step, left <= 5 ? 400 : left <= 10 ? 700 : 1000);
+    }, 1000);
+
+    return () => {
+      clearInterval(secInterval);
+      clearTimeout(tickTimer);
+      stopMusic();
     };
-    timeout = setTimeout(step, 1000);
-    return () => clearTimeout(timeout);
   }, [phase]);
 
   /* ---------- actions ---------- */
@@ -252,7 +278,8 @@ function SoundItGame() {
       setStamp("SKIP");
     }
     setTimeout(() => {
-      setDeckPos((p) => (p + 1 < deck.length ? p + 1 : 0));
+      if (isQC) drawQC();
+      else setDeckPos((p) => (p + 1 < deck.length ? p + 1 : 0));
       setCardIndex((i) => i + 1);
       setExit(null);
       lockRef.current = false;
@@ -283,16 +310,23 @@ function SoundItGame() {
 
   const beginRound = () => {
     unlockAudio();
-    setDeck(shuffle(availableCards));
-    setDeckPos(0);
     setCardIndex(0);
     setCorrect(0);
     setSkips(0);
     setStreak(0);
     setBestStreak(0);
     lockRef.current = false;
+    if (isQC) {
+      qcRecent.current = [];
+      drawQC();
+      setPhase("ready");
+      return;
+    }
+    setDeck(shuffle(availableCards));
+    setDeckPos(0);
     setPhase("countdown");
   };
+
 
   // record result when entering summary
   const recordedRef = useRef(-1);
