@@ -92,6 +92,8 @@ const CARD_COLORS = [
 ];
 const DARK_TEXT_ON = [0, 3]; // yellow, lime
 const ROUND_SECONDS = 60;
+const PRESSURE_SECONDS = 15; // psychological pressure phase length
+
 
 interface RoundResult {
   playerId: string;
