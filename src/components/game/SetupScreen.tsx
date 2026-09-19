@@ -336,22 +336,51 @@ export function SetupScreen({
         </section>
       )}
 
+      {/* Audio & feedback */}
+      <section>
+        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+          Sound &amp; feedback
+        </h2>
+        <div className="grid grid-cols-3 gap-2">
+          {(
+            [
+              ["🎵 Music", music, () => setMusic((v) => !v)],
+              ["🔊 Effects", sfx, () => setSfx((v) => !v)],
+              ["📳 Haptics", hap, () => setHap((v) => !v)],
+            ] as const
+          ).map(([label, on, toggle]) => (
+            <button
+              key={label}
+              onClick={toggle}
+              className={`rounded-2xl px-2 py-3 text-xs font-black ${
+                on ? "bg-card-blue text-white" : "bg-white/8 text-white/40"
+              }`}
+            >
+              {label}
+              <span className="block text-[10px] opacity-70">{on ? "ON" : "OFF"}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
       <div className="mt-auto pt-2">
         <button
-          disabled={activeCount < 2}
+          disabled={!canStart}
           onClick={onStart}
           className="w-full rounded-3xl bg-card-lime py-6 text-3xl font-black text-black transition-transform active:scale-[0.98] disabled:bg-white/10 disabled:text-white/30"
           style={{ fontFamily: "var(--font-display)" }}
         >
           START GAME
         </button>
-        {activeCount < 2 && (
+        {!canStart && (
           <p className="mt-3 text-center text-sm font-semibold text-white/40">
-            Select at least 2 players to start
+            {activeCount < 2
+              ? "Select at least 2 players to start"
+              : "Pick at least one Quick Call category"}
           </p>
         )}
       </div>
+
     </div>
   );
 }
