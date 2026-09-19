@@ -1,7 +1,15 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { CATEGORIES, type CategoryId } from "@/lib/cards";
 import type { Player } from "@/lib/players";
 import { QUICK_CALL_CATEGORIES, quickCallPoolSize } from "@/lib/quickcall";
+import {
+  isMusicEnabled,
+  isSfxEnabled,
+  setMusicEnabled,
+  setSfxEnabled,
+} from "@/lib/audio";
+import { isHapticsEnabled, setHapticsEnabled } from "@/lib/haptics";
+
 
 export type Mode = "sound" | "act" | "mix" | "quickcall";
 
@@ -57,9 +65,19 @@ export function SetupScreen({
   const [editing, setEditing] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<Player | null>(null);
+  const [music, setMusic] = useState(isMusicEnabled());
+  const [sfx, setSfx] = useState(isSfxEnabled());
+  const [hap, setHap] = useState(isHapticsEnabled());
+
+  useEffect(() => setMusicEnabled(music), [music]);
+  useEffect(() => setSfxEnabled(sfx), [sfx]);
+  useEffect(() => setHapticsEnabled(hap), [hap]);
 
   const activeCount = selected.length;
   const allCats = categories.length === CATEGORIES.length;
+  const canStart =
+    activeCount >= 2 && (mode !== "quickcall" || qcCategories.length > 0);
+
 
   const toggleCat = (id: CategoryId) => {
     if (categories.includes(id)) {
