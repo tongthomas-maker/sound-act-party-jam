@@ -407,6 +407,9 @@ function SoundItGame() {
           setMode={setMode}
           categories={categories}
           setCategories={setCategories}
+          qcCategories={qcCategories}
+          setQcCategories={setQcCategories}
+
           cardCount={availableCards.length}
           onStart={startGame}
         />
