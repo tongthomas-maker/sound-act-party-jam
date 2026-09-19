@@ -129,6 +129,8 @@ function SoundItGame() {
   const [cardIndex, setCardIndex] = useState(0);
   const [exit, setExit] = useState<"got" | "skip" | null>(null);
   const [stamp, setStamp] = useState<string | null>(null);
+  const [actionFeedback, setActionFeedback] = useState<"got" | "skip" | null>(null);
+  const actionFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [countValue, setCountValue] = useState(5);
   const [secondsLeft, setSecondsLeft] = useState(ROUND_SECONDS);
@@ -264,6 +266,12 @@ function SoundItGame() {
     if (lockRef.current || phase !== "play" || secondsLeft <= 0) return;
     lockRef.current = true;
     setExit(kind);
+    setActionFeedback(kind);
+    if (actionFeedbackTimer.current) clearTimeout(actionFeedbackTimer.current);
+    actionFeedbackTimer.current = setTimeout(() => {
+      setActionFeedback(null);
+      actionFeedbackTimer.current = null;
+    }, 300);
     if (kind === "got") {
       gotItSound();
       hapticGotIt();
@@ -287,6 +295,13 @@ function SoundItGame() {
       lockRef.current = false;
     }, 230);
   };
+
+  useEffect(
+    () => () => {
+      if (actionFeedbackTimer.current) clearTimeout(actionFeedbackTimer.current);
+    },
+    [],
+  );
 
   const tilt = useTiltControls({
     enabled: phase === "play" && secondsLeft > 0 && exit === null,
@@ -581,17 +596,21 @@ function SoundItGame() {
           <div className="grid grid-cols-[1fr_1.4fr] gap-3 px-3 pb-3 pt-3">
             <button
               onClick={() => advance("skip")}
-              className="rounded-3xl bg-white/12 py-7 text-2xl font-black text-white/80 active:scale-[0.97]"
+              className={`rounded-3xl bg-white/12 py-7 text-2xl font-black text-white/80 transition-transform duration-150 active:scale-[0.97] ${
+                actionFeedback === "skip" ? "scale-[1.04] brightness-125" : ""
+              }`}
               style={{ fontFamily: "var(--font-display)" }}
             >
-              SKIP
+              {actionFeedback === "skip" ? "SKIPPED" : "SKIP"}
             </button>
             <button
               onClick={() => advance("got")}
-              className="rounded-3xl bg-card-lime py-7 text-3xl font-black text-black active:scale-[0.97]"
+              className={`rounded-3xl bg-card-lime py-7 text-3xl font-black text-black transition-transform duration-150 active:scale-[0.97] ${
+                actionFeedback === "got" ? "scale-[1.04] brightness-125" : ""
+              }`}
               style={{ fontFamily: "var(--font-display)" }}
             >
-              ✓ GOT IT!
+              {actionFeedback === "got" ? "✓ +1" : "GOT IT!"}
             </button>
           </div>
         </div>
@@ -656,17 +675,21 @@ function SoundItGame() {
             <div className="flex w-[26vw] max-w-44 shrink-0 flex-col gap-2 py-1">
               <button
                 onClick={() => advance("got")}
-                className="flex-[1.5] rounded-3xl bg-card-lime text-2xl font-black text-black active:scale-[0.97]"
+                className={`flex-[1.5] rounded-3xl bg-card-lime text-2xl font-black text-black transition-transform duration-150 active:scale-[0.97] ${
+                  actionFeedback === "got" ? "scale-[1.04] brightness-125" : ""
+                }`}
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                ✓ GOT IT!
+                {actionFeedback === "got" ? "✓ +1" : "GOT IT!"}
               </button>
               <button
                 onClick={() => advance("skip")}
-                className="flex-1 rounded-3xl bg-white/12 text-xl font-black text-white/80 active:scale-[0.97]"
+                className={`flex-1 rounded-3xl bg-white/12 text-xl font-black text-white/80 transition-transform duration-150 active:scale-[0.97] ${
+                  actionFeedback === "skip" ? "scale-[1.04] brightness-125" : ""
+                }`}
                 style={{ fontFamily: "var(--font-display)" }}
               >
-                SKIP
+                {actionFeedback === "skip" ? "SKIPPED" : "SKIP"}
               </button>
             </div>
 
