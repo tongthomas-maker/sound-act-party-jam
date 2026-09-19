@@ -703,9 +703,13 @@ function SoundItGame() {
 
       {phase === "summary" && guesser && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
-          <p className="text-sm font-black uppercase tracking-[0.3em] text-white/40">
-            Time&apos;s up
+          <p
+            className="si-pop text-[16vw] leading-none text-card-pink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            TIME!
           </p>
+
           <h2
             className="text-[14vw] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}
