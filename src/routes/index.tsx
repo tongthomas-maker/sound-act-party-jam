@@ -30,6 +30,12 @@ import {
   type Player,
 } from "@/lib/players";
 import { useTiltControls } from "@/hooks/use-tilt-controls";
+import {
+  hapticGotIt,
+  hapticPass,
+  hapticSkip,
+  hapticTimeUp,
+} from "@/lib/haptics";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -168,6 +174,7 @@ function SoundItGame() {
       setSecondsLeft(left);
       if (left <= 0) {
         buzzer();
+        hapticTimeUp();
         lockRef.current = true;
         setPhase("summary");
         return;
@@ -182,12 +189,13 @@ function SoundItGame() {
   }, [phase]);
 
   /* ---------- actions ---------- */
-  const advance = (kind: "got" | "skip") => {
-    if (lockRef.current || phase !== "play") return;
+  const advance = (kind: "got" | "skip", _source: "button" | "motion" = "button") => {
+    if (lockRef.current || phase !== "play" || secondsLeft <= 0) return;
     lockRef.current = true;
     setExit(kind);
     if (kind === "got") {
       gotItSound();
+      hapticGotIt();
       const s = streak + 1;
       setStreak(s);
       setBestStreak((b) => Math.max(b, s));
@@ -195,6 +203,7 @@ function SoundItGame() {
       setStamp(s >= 3 ? `🔥 ${s} IN A ROW!` : "+1");
     } else {
       skipSound();
+      hapticSkip();
       setStreak(0);
       setSkips((s) => s + 1);
       setStamp("SKIP");
@@ -208,9 +217,9 @@ function SoundItGame() {
   };
 
   const tilt = useTiltControls({
-    enabled: phase === "play" && secondsLeft > 0,
-    onUp: () => advance("got"),
-    onDown: () => advance("skip"),
+    enabled: phase === "play" && secondsLeft > 0 && exit === null,
+    onUp: () => advance("got", "motion"),
+    onDown: () => advance("skip", "motion"),
   });
 
 
@@ -255,6 +264,7 @@ function SoundItGame() {
   }, [phase, guesser, roundIndex, correct, skips, bestStreak]);
 
   const goNext = () => {
+    hapticPass();
     if (roundIndex + 1 >= order.length) {
       fanfare();
       setPhase("final");
