@@ -597,6 +597,110 @@ function SoundItGame() {
         </div>
       )}
 
+      {/* ⚡ QUICK CALL — landscape-first active card */}
+      {phase === "play" && isQC && qcCard && (
+        <div
+          className={`flex min-h-dvh flex-col px-2 pt-[env(safe-area-inset-top)] pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
+            secondsLeft <= PRESSURE_SECONDS ? "si-pressure" : ""
+          }`}
+        >
+          {/* status strip */}
+          <div className="flex items-center gap-2 px-2 py-1.5 text-xs font-black">
+            <span className="rounded-full bg-white/10 px-3 py-1">🔥 {streak}</span>
+            <span
+              className={`rounded-full px-3 py-1 tabular-nums ${
+                secondsLeft <= PRESSURE_SECONDS
+                  ? "si-urgent bg-card-pink text-white"
+                  : "bg-white/10"
+              }`}
+            >
+              ⏱ 0:{String(Math.max(secondsLeft, 0)).padStart(2, "0")}
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1">✓ {correct}</span>
+            <span className="ml-auto truncate pr-10 uppercase tracking-wider text-white/40">
+              {guesser?.name}
+            </span>
+          </div>
+
+          <div className="relative flex flex-1 items-stretch gap-2">
+            <div
+              key={cardIndex}
+              className={`si-card-in flex flex-1 items-center gap-4 rounded-[2rem] px-4 py-3 ${
+                exit === "got" ? "si-flip-out" : exit === "skip" ? "si-slide-out" : ""
+              }`}
+              style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
+            >
+              <div
+                className="flex shrink-0 items-center justify-center leading-none"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontSize: "min(46vw, 40vh)",
+                }}
+              >
+                {qcCard.letter}
+              </div>
+              <div className="flex min-w-0 flex-1 flex-col justify-center gap-2 text-left">
+                <div
+                  className="truncate text-[clamp(1.1rem,4.5vh,2.2rem)] leading-none opacity-80"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {qcCard.emoji} {qcCard.categoryName}
+                </div>
+                <div className="text-[clamp(1rem,4vh,1.9rem)] font-black leading-tight">
+                  {qcCard.prompt}
+                </div>
+              </div>
+            </div>
+
+            {/* controls — fixed right rail, always available */}
+            <div className="flex w-[26vw] max-w-44 shrink-0 flex-col gap-2 py-1">
+              <button
+                onClick={() => advance("got")}
+                className="flex-[1.5] rounded-3xl bg-card-lime text-2xl font-black text-black active:scale-[0.97]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                ✓ GOT IT!
+              </button>
+              <button
+                onClick={() => advance("skip")}
+                className="flex-1 rounded-3xl bg-white/12 text-xl font-black text-white/80 active:scale-[0.97]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                SKIP
+              </button>
+            </div>
+
+            {stamp && (
+              <div
+                className="si-stamp pointer-events-none absolute inset-0 flex items-center justify-center text-[14vh] font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]"
+                style={{ fontFamily: "var(--font-display)" }}
+              >
+                {stamp}
+              </div>
+            )}
+          </div>
+
+          {tilt.supported && (
+            <div className="pt-1 text-center">
+              <button
+                onClick={() => void tilt.toggleMotion()}
+                className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-wider ${
+                  tilt.motionOn ? "bg-card-blue text-white" : "bg-white/10 text-white/50"
+                }`}
+              >
+                {tilt.motionOn
+                  ? "📱 Tilt on — up = got it, down = skip"
+                  : tilt.permission === "denied"
+                    ? "📱 Motion blocked — use buttons"
+                    : "📱 Use tilt controls"}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+
+
       {phase === "summary" && guesser && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-6 px-6 text-center">
           <p className="text-sm font-black uppercase tracking-[0.3em] text-white/40">
