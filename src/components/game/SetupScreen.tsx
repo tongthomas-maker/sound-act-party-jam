@@ -1,13 +1,19 @@
 import { useState } from "react";
 import { CATEGORIES, type CategoryId } from "@/lib/cards";
 import type { Player } from "@/lib/players";
+import { QUICK_CALL_CATEGORIES, quickCallPoolSize } from "@/lib/quickcall";
 
-export type Mode = "sound" | "act" | "mix";
+export type Mode = "sound" | "act" | "mix" | "quickcall";
 
 const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "sound", label: "🔊 SOUND IT", hint: "Sounds only. No words, no acting." },
   { id: "act", label: "🎭 ACT IT", hint: "Actions only. No words, no sounds." },
   { id: "mix", label: "🔀 MIX IT", hint: "Everything shuffled together." },
+  {
+    id: "quickcall",
+    label: "⚡ QUICK CALL",
+    hint: "Category + letter. Say an answer fast. Played sideways.",
+  },
 ];
 
 interface Props {
@@ -21,9 +27,12 @@ interface Props {
   setMode: (m: Mode) => void;
   categories: CategoryId[];
   setCategories: (c: CategoryId[]) => void;
+  qcCategories: string[];
+  setQcCategories: (c: string[]) => void;
   cardCount: number;
   onStart: () => void;
 }
+
 
 export function SetupScreen({
   players,
