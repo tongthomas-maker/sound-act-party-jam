@@ -634,7 +634,7 @@ function SoundItGame() {
                 className="flex shrink-0 items-center justify-center leading-none"
                 style={{
                   fontFamily: "var(--font-display)",
-                  fontSize: "min(46vw, 40vh)",
+                  fontSize: "min(34vw, 66vh)",
                 }}
               >
                 {qcCard.letter}
