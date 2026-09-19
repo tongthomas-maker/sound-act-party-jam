@@ -14,10 +14,18 @@ import {
   countdownBeep,
   fanfare,
   gotItSound,
+  heartbeat,
   isMuted,
+  isMusicEnabled,
+  isSfxEnabled,
   revealChime,
   setMuted,
+  setMusicEnabled,
+  setMusicIntensity,
+  setSfxEnabled,
   skipSound,
+  startMusic,
+  stopMusic,
   tick,
   unlockAudio,
 } from "@/lib/audio";
@@ -30,12 +38,19 @@ import {
   type Player,
 } from "@/lib/players";
 import { useTiltControls } from "@/hooks/use-tilt-controls";
+import { useFullscreen, useIsLandscape } from "@/hooks/use-fullscreen";
+import {
+  drawQuickCallCard,
+  QUICK_CALL_CATEGORY_IDS,
+  type QuickCallCard,
+} from "@/lib/quickcall";
 import {
   hapticGotIt,
   hapticPass,
   hapticSkip,
   hapticTimeUp,
 } from "@/lib/haptics";
+
 
 export const Route = createFileRoute("/")({
   head: () => ({
