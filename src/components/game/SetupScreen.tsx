@@ -252,37 +252,87 @@ export function SetupScreen({
       </section>
 
       {/* Categories */}
-      <section>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
-          Categories
-        </h2>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => setCategories(CATEGORIES.map((c) => c.id))}
-            className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-black ${
-              allCats ? "bg-card-lime text-black" : "bg-white/8 text-white/70"
-            }`}
-          >
-            ✨ ALL CATEGORIES
-          </button>
-          {CATEGORIES.map((c) => (
+      {mode === "quickcall" ? (
+        <section>
+          <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+            Quick Call categories
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            {QUICK_CALL_CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() =>
+                  setQcCategories(
+                    qcCategories.includes(c.id)
+                      ? qcCategories.filter((x) => x !== c.id)
+                      : [...qcCategories, c.id],
+                  )
+                }
+                className={`rounded-2xl px-4 py-5 text-sm font-black ${
+                  qcCategories.includes(c.id)
+                    ? "bg-card-orange text-white"
+                    : "bg-white/8 text-white/50"
+                }`}
+              >
+                {c.emoji} {c.name}
+                {qcCategories.includes(c.id) ? " ✓" : ""}
+              </button>
+            ))}
+          </div>
+          <div className="mt-2 grid grid-cols-2 gap-2">
             <button
-              key={c.id}
-              onClick={() => toggleCat(c.id)}
-              className={`rounded-2xl px-4 py-4 text-sm font-black ${
-                categories.includes(c.id)
-                  ? "bg-card-blue text-white"
-                  : "bg-white/8 text-white/50"
+              onClick={() => setQcCategories(QUICK_CALL_CATEGORIES.map((c) => c.id))}
+              className="rounded-2xl bg-white/12 px-4 py-3 text-sm font-black text-white"
+            >
+              SELECT ALL
+            </button>
+            <button
+              onClick={() => setQcCategories([])}
+              className="rounded-2xl bg-white/8 px-4 py-3 text-sm font-black text-white/60"
+            >
+              CLEAR ALL
+            </button>
+          </div>
+          <p className="mt-2 text-center text-xs font-semibold text-white/35">
+            {qcCategories.length
+              ? `${quickCallPoolSize(qcCategories)} category + letter combos`
+              : "Pick at least one category"}
+          </p>
+        </section>
+      ) : (
+        <section>
+          <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
+            Categories
+          </h2>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => setCategories(CATEGORIES.map((c) => c.id))}
+              className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-black ${
+                allCats ? "bg-card-lime text-black" : "bg-white/8 text-white/70"
               }`}
             >
-              {c.emoji} {c.label}
+              ✨ ALL CATEGORIES
             </button>
-          ))}
-        </div>
-        <p className="mt-2 text-center text-xs font-semibold text-white/35">
-          {cardCount} cards in this deck
-        </p>
-      </section>
+            {CATEGORIES.map((c) => (
+              <button
+                key={c.id}
+                onClick={() => toggleCat(c.id)}
+                className={`rounded-2xl px-4 py-4 text-sm font-black ${
+                  categories.includes(c.id)
+                    ? "bg-card-blue text-white"
+                    : "bg-white/8 text-white/50"
+                }`}
+              >
+                {c.emoji} {c.label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-center text-xs font-semibold text-white/35">
+            {cardCount} cards in this deck
+          </p>
+        </section>
+      )}
+
 
       <div className="mt-auto pt-2">
         <button
