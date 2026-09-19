@@ -426,16 +426,23 @@ function SoundItGame() {
           >
             {guesser.name.toUpperCase()} IS GUESSING!
           </h2>
-          <p className="max-w-sm text-lg font-bold text-white/70">
-            {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else: pass the
-            phone around and{" "}
-            {mode === "sound"
-              ? "make the sounds"
-              : mode === "act"
-                ? "act it out"
-                : "follow each card's badge"}
-            . No words!
-          </p>
+          {isQC ? (
+            <p className="max-w-sm text-lg font-bold text-white/70">
+              {guesser.name}, you&apos;re answering! Everyone else reads the card and
+              judges the answers. Category + letter — say one out loud, fast.
+            </p>
+          ) : (
+            <p className="max-w-sm text-lg font-bold text-white/70">
+              {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else: pass the
+              phone around and{" "}
+              {mode === "sound"
+                ? "make the sounds"
+                : mode === "act"
+                  ? "act it out"
+                  : "follow each card's badge"}
+              . No words!
+            </p>
+          )}
           <button
             onClick={beginRound}
             className="mt-4 w-full max-w-sm rounded-3xl bg-card-lime py-6 text-3xl font-black text-black active:scale-[0.98]"
@@ -443,6 +450,7 @@ function SoundItGame() {
           >
             READY!
           </button>
+
         </div>
       )}
 
@@ -458,7 +466,40 @@ function SoundItGame() {
         </div>
       )}
 
-      {phase === "play" && card && (
+      {phase === "ready" && guesser && (
+        <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 text-center">
+          <h2
+            className="si-pop text-[13vw] leading-none text-card-orange"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            {guesser.name.toUpperCase()} IS UP
+          </h2>
+          <p className="text-lg font-black text-white/70">
+            {landscape ? "✅ Sideways — perfect" : "↔️ Turn sideways to play"}
+          </p>
+          {!fullscreen.isFullscreen && fullscreen.supported && (
+            <>
+              <p className="text-sm font-bold text-white/40">Best played full screen</p>
+              <button
+                onClick={() => void fullscreen.expand()}
+                className="rounded-3xl bg-white/12 px-8 py-4 text-lg font-black text-white"
+              >
+                ⛶ EXPAND SCREEN
+              </button>
+            </>
+          )}
+          <button
+            onClick={() => setPhase("countdown")}
+            className="mt-2 w-full max-w-sm rounded-3xl bg-card-lime py-6 text-3xl font-black text-black active:scale-[0.98]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            START ROUND
+          </button>
+        </div>
+      )}
+
+      {phase === "play" && !isQC && card && (
+
         <div className="flex min-h-dvh flex-col pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
           {/* status strip */}
           <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-4 py-3">
