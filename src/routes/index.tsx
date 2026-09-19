@@ -72,7 +72,15 @@ export const Route = createFileRoute("/")({
   component: SoundItGame,
 });
 
-type Phase = "setup" | "announce" | "countdown" | "play" | "summary" | "final";
+type Phase =
+  | "setup"
+  | "announce"
+  | "ready"
+  | "countdown"
+  | "play"
+  | "summary"
+  | "final";
+
 
 const CARD_COLORS = [
   "var(--color-card-yellow)",
