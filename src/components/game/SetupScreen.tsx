@@ -45,6 +45,9 @@ export function SetupScreen({
   setMode,
   categories,
   setCategories,
+  qcCategories,
+  setQcCategories,
+
   cardCount,
   onStart,
 }: Props) {
