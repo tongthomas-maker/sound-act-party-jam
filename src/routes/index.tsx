@@ -138,6 +138,21 @@ function SoundItGame() {
 
   const [selected, setSelected] = useState<string[]>([]);
 
+  /* ---------- Quick Call ---------- */
+  const [qcCategories, setQcCategories] = useState<string[]>(QUICK_CALL_CATEGORY_IDS);
+  const [qcCard, setQcCard] = useState<QuickCallCard | null>(null);
+  const qcRecent = useRef<string[]>([]);
+  const isQC = mode === "quickcall";
+  const fullscreen = useFullscreen();
+  const landscape = useIsLandscape();
+
+  const drawQC = useCallback(() => {
+    const next = drawQuickCallCard(qcCategories, qcRecent.current);
+    if (!next) return;
+    qcRecent.current = [...qcRecent.current, next.key].slice(-10);
+    setQcCard(next);
+  }, [qcCategories]);
+
   useEffect(() => {
     const roster = loadRoster();
     setPlayers(roster);
@@ -156,13 +171,18 @@ function SoundItGame() {
   }, []);
 
   const availableCards = useMemo(
-    () => filterCards(mode, categories.length === CATEGORIES.length ? "all" : categories),
+    () =>
+      filterCards(
+        mode === "quickcall" ? "mix" : mode,
+        categories.length === CATEGORIES.length ? "all" : categories,
+      ),
     [mode, categories],
   );
 
   const guesser = order[roundIndex];
   const nextGuesser = order[roundIndex + 1];
   const card = deck[deckPos];
+
 
   /* ---------- countdown ---------- */
   useEffect(() => {
