@@ -257,5 +257,5 @@ export function shuffle<T>(arr: T[]): T[] {
 export const CLUE_LABEL: Record<ClueType, string> = {
   sound: "🔊 SOUND IT!",
   act: "🎭 ACT IT!",
-  either: "🔊🎭 EITHER!",
+  either: "🔊🎭 SOUND OR ACT!",
 };
