@@ -38,8 +38,7 @@ export function useFullscreen() {
     const el = document.documentElement as FsElement;
     try {
       if (typeof el.requestFullscreen === "function") await el.requestFullscreen();
-      else if (typeof el.webkitRequestFullscreen === "function")
-        await el.webkitRequestFullscreen();
+      else if (typeof el.webkitRequestFullscreen === "function") await el.webkitRequestFullscreen();
       else return false;
       return true;
     } catch {

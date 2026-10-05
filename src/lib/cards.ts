@@ -15,11 +15,7 @@ export const CATEGORIES: { id: CategoryId; label: string; emoji: string }[] = [
   { id: "whats", label: "What's Happening?!", emoji: "😂" },
 ];
 
-const mk = (
-  category: CategoryId,
-  clueType: ClueType,
-  prompts: string[],
-): Card[] =>
+const mk = (category: CategoryId, clueType: ClueType, prompts: string[]): Card[] =>
   prompts.map((prompt, i) => ({
     id: `${category}-${clueType}-${i}`,
     prompt,
@@ -257,5 +253,5 @@ export function shuffle<T>(arr: T[]): T[] {
 export const CLUE_LABEL: Record<ClueType, string> = {
   sound: "🔊 SOUND IT!",
   act: "🎭 ACT IT!",
-  either: "🔊🎭 EITHER!",
+  either: "🔊🎭 SOUND OR ACT!",
 };

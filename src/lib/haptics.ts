@@ -20,7 +20,6 @@ function buzz(pattern: number | number[]) {
   }
 }
 
-
 export function hapticsSupported() {
   if (typeof navigator === "undefined") return false;
   return typeof (navigator as Navigator & { vibrate?: unknown }).vibrate === "function";
