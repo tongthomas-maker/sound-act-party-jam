@@ -7,6 +7,8 @@ interface Options {
   enabled: boolean;
   onUp: () => void;
   onDown: () => void;
+  /** Saved Flip Controls preference; applied once permission state is known. */
+  preferOn?: boolean;
 }
 
 /* ---- gesture tuning ---- */
@@ -62,7 +64,7 @@ function tiltForOrientation(beta: number, gamma: number, angle: number): number 
   }
 }
 
-export function useTiltControls({ enabled, onUp, onDown }: Options) {
+export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Options) {
   const [permission, setPermission] = useState<Permission>("unsupported");
   const [motionOn, setMotionOn] = useState(false);
 
@@ -99,6 +101,12 @@ export function useTiltControls({ enabled, onUp, onDown }: Options) {
     if (typeof C.requestPermission === "function") setPermission("needs-permission");
     else setPermission("granted");
   }, []);
+
+  // honour the saved preference where no explicit permission prompt is needed
+  useEffect(() => {
+    if (permission === "granted") setMotionOn(preferOn);
+    else if (!preferOn) setMotionOn(false);
+  }, [preferOn, permission]);
 
   const requestPermission = useCallback(async () => {
     const O = orientationCtor();
