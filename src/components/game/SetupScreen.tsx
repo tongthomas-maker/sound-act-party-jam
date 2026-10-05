@@ -133,6 +133,10 @@ export function SetupScreen({
                 }`}
               >
                 <button
+                  type="button"
+                  aria-pressed={selected.includes(p.id)}
+                  aria-label={`${p.name}${selected.includes(p.id) ? ", playing" : ", not playing"}`}
+                  disabled={editMode}
                   onClick={() => (editMode ? undefined : onToggleSelect(p.id))}
                   className="max-w-32 truncate"
                 >
@@ -189,6 +193,7 @@ export function SetupScreen({
               maxLength={MAX_NAME}
               onChange={(e) => setName(e.target.value)}
               placeholder="Player name…"
+              aria-label="New player name"
               className="min-w-0 flex-1 rounded-2xl bg-white/10 px-4 py-3.5 text-base font-semibold text-white placeholder:text-white/30 outline-none focus:bg-white/15"
             />
             <button
@@ -237,6 +242,8 @@ export function SetupScreen({
           {MODES.map((m) => (
             <button
               key={m.id}
+              type="button"
+              aria-pressed={mode === m.id}
               onClick={() => setMode(m.id)}
               className={`rounded-2xl px-5 py-4 text-left transition-colors ${
                 mode === m.id ? "bg-card-purple text-white" : "bg-white/8 text-white/70"
@@ -257,6 +264,8 @@ export function SetupScreen({
           </h2>
           <div className="grid grid-cols-2 gap-2">
             <button
+              type="button"
+              aria-pressed={allCats}
               onClick={() => setCategories(CATEGORIES.map((c) => c.id))}
               className={`col-span-2 rounded-2xl px-4 py-3 text-sm font-black ${
                 allCats ? "bg-card-lime text-black" : "bg-white/8 text-white/70"
@@ -267,16 +276,19 @@ export function SetupScreen({
             {CATEGORIES.map((c) => (
               <button
                 key={c.id}
+                type="button"
+                aria-pressed={categories.includes(c.id)}
                 onClick={() => toggleCat(c.id)}
                 className={`rounded-2xl px-4 py-4 text-sm font-black ${
                   categories.includes(c.id) ? "bg-card-blue text-white" : "bg-white/8 text-white/50"
                 }`}
               >
                 {c.emoji} {c.label}
+                {categories.includes(c.id) ? " ✓" : ""}
               </button>
             ))}
           </div>
-          <p className="mt-2 text-center text-xs font-semibold text-white/35">
+          <p aria-live="polite" className="mt-2 text-center text-xs font-semibold text-white/35">
             {cardCount} cards in this deck
           </p>
         </section>
@@ -364,7 +376,7 @@ export function SetupScreen({
           START GAME
         </button>
         {!canStart && (
-          <p className="mt-3 text-center text-sm font-semibold text-white/40">
+          <p role="status" className="mt-3 text-center text-sm font-semibold text-white/40">
             {activeCount < 2
               ? "Select at least 2 players to start"
               : "No cards match — pick another category"}

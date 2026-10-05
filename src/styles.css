@@ -253,3 +253,21 @@
   animation: si-urgent 0.7s ease-in-out infinite;
 }
 
+
+@media (prefers-reduced-motion: reduce) {
+  .si-flip-out,
+  .si-slide-out,
+  .si-card-in,
+  .si-stamp,
+  .si-pop,
+  .si-pressure,
+  .si-urgent {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
+
+:where(button, input, [tabindex]):focus-visible {
+  outline: 3px solid var(--color-card-yellow, currentColor);
+  outline-offset: 2px;
+}
