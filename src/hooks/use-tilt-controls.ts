@@ -49,7 +49,7 @@ function screenAngle(): number {
  * Project beta (front-back tilt) and gamma (left-right tilt) onto the axis that
  * is physically "up/down" for how the screen is currently rotated.
  */
-function tiltForOrientation(beta: number, gamma: number, angle: number): number {
+export function tiltForOrientation(beta: number, gamma: number, angle: number): number {
   switch (angle) {
     case 90:
       return -gamma;

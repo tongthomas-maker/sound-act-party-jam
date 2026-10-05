@@ -16,6 +16,8 @@ import {
   type Turn,
   type TurnResult,
   type TurnStats,
+  stepCountdown,
+  stepRoundClock,
 } from "@/lib/game";
 import { loadPrefs, savePrefs, DEFAULT_PREFS, type Prefs } from "@/lib/prefs";
 import {
@@ -200,9 +202,10 @@ function SoundItGame() {
     setCountValue(countRef.current);
     countdownBeep();
     const id = setInterval(() => {
-      countRef.current -= 1;
-      const v = countRef.current;
-      if (v <= 0) {
+      const step = stepCountdown(countRef.current);
+      countRef.current = step.value;
+      const v = step.value;
+      if (step.done) {
         clearInterval(id);
         revealChime();
         leftRef.current = prefs.roundSeconds;
@@ -243,13 +246,17 @@ function SoundItGame() {
     tickTimer = setTimeout(tickLoop, 1000);
 
     const secInterval = setInterval(() => {
-      leftRef.current -= 1;
-      const left = leftRef.current;
+      const step = stepRoundClock(leftRef.current);
+      leftRef.current = step.left;
+      const left = step.left;
       setSecondsLeft(left);
       setMusicIntensity(intensity(left));
-      if (left <= 0) {
+      if (step.expired) {
         clearInterval(secInterval);
         clearTimeout(tickTimer);
+        // drop any in-flight card advance so it can't leak past TIME!
+        if (advanceTimer.current) clearTimeout(advanceTimer.current);
+        advanceTimer.current = null;
         stopMusic();
         buzzer();
         hapticTimeUp();
@@ -337,6 +344,11 @@ function SoundItGame() {
     recordedRef.current = -1;
     setTurnIndex(0);
     deckRef.current = createPromptDeck(availableCards); // fresh used-prompt state
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setExit(null);
+    setStamp(null);
+    setActionFeedback(null);
     setPaused(false);
     setPhase("announce");
   };
@@ -409,6 +421,8 @@ function SoundItGame() {
 
   const gotBtn = (cls: string) => (
     <button
+      type="button"
+      aria-label="Got it, plus one point"
       onClick={() => advance("got")}
       className={`rounded-3xl bg-card-lime font-black text-black transition-transform duration-150 active:scale-[0.97] ${cls} ${
         actionFeedback === "got" ? "scale-[1.04] brightness-125" : ""
@@ -420,6 +434,8 @@ function SoundItGame() {
   );
   const passBtn = (cls: string) => (
     <button
+      type="button"
+      aria-label="Pass, no point"
       onClick={() => advance("pass")}
       className={`rounded-3xl bg-white/12 font-black text-white/80 transition-transform duration-150 active:scale-[0.97] ${cls} ${
         actionFeedback === "pass" ? "scale-[1.04] brightness-125" : ""
@@ -437,14 +453,21 @@ function SoundItGame() {
         <button
           onClick={toggleMute}
           className="fixed right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-50 rounded-full bg-white/10 px-3 py-2 text-sm backdrop-blur"
-          aria-label={muted ? "Unmute" : "Mute"}
+          type="button"
+          aria-pressed={muted}
+          aria-label={muted ? "Unmute sound" : "Mute sound"}
         >
           {muted ? "🔇" : "🔊"}
         </button>
       )}
 
       {paused && (phase === "countdown" || phase === "play") && (
-        <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-stage/95 px-6 text-center">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Game paused"
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-stage/95 px-6 text-center"
+        >
           <p
             className="text-[12vh] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}
@@ -457,6 +480,8 @@ function SoundItGame() {
               : "Countdown paused"}
           </p>
           <button
+            type="button"
+            autoFocus
             onClick={() => {
               unlockAudio();
               setPaused(false);
@@ -537,6 +562,8 @@ function SoundItGame() {
             )}
             {tilt.supported && (
               <button
+                type="button"
+                aria-pressed={tilt.motionOn}
                 onClick={() => void toggleFlip()}
                 className={`rounded-full px-5 py-3 text-sm font-black ${
                   tilt.motionOn ? "bg-card-blue text-white" : "bg-white/12 text-white/70"
@@ -560,6 +587,9 @@ function SoundItGame() {
         <div className="flex min-h-dvh flex-col items-center justify-center">
           <div
             key={countValue}
+            role="timer"
+            aria-live="assertive"
+            aria-label={`Starting in ${countValue}`}
             className="si-pop text-[min(55vw,70vh)] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}
           >
@@ -627,6 +657,10 @@ function SoundItGame() {
               </div>
             )}
 
+            <span role="status" aria-live="polite" className="sr-only">
+              {stamp ?? ""}
+              {secondsLeft <= 10 && secondsLeft > 0 ? ` ${secondsLeft} seconds left` : ""}
+            </span>
             {stamp && (
               <div
                 className="si-stamp pointer-events-none absolute inset-0 flex items-center justify-center text-[min(13vw,14vh)] font-black text-white drop-shadow-[0_6px_0_rgba(0,0,0,0.35)]"
@@ -640,8 +674,10 @@ function SoundItGame() {
           {tilt.supported && (
             <div className="pt-1 text-center">
               <button
+                type="button"
+                aria-pressed={tilt.motionOn}
                 onClick={() => void toggleFlip()}
-                className={`rounded-full px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
+                className={`rounded-full min-h-11 px-3 py-1 text-[11px] font-black uppercase tracking-wider ${
                   tilt.motionOn ? "bg-card-blue text-white" : "bg-white/10 text-white/50"
                 }`}
               >
@@ -655,6 +691,7 @@ function SoundItGame() {
       {phase === "summary" && guesser && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 py-6 text-center">
           <p
+            role="alert"
             className="si-pop text-[min(16vw,18vh)] leading-none text-card-pink"
             style={{ fontFamily: "var(--font-display)" }}
           >
