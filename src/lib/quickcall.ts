@@ -10,11 +10,7 @@
  */
 
 export type QuickCallStyle = "knowledge" | "creative";
-export type QuickCallFamily =
-  | "geography"
-  | "food"
-  | "animals"
-  | "everyday";
+export type QuickCallFamily = "geography" | "food" | "animals" | "everyday";
 
 export interface QuickCallCategory {
   id: string;

@@ -3,14 +3,18 @@ import { loadRoster, loadSelection, newPlayer, saveRoster, saveSelection } from 
 
 beforeEach(() => {
   const m = new Map<string, string>();
-  const ls = { getItem: (k: string) => m.get(k) ?? null, setItem: (k: string, v: string) => void m.set(k, v) };
+  const ls = {
+    getItem: (k: string) => m.get(k) ?? null,
+    setItem: (k: string, v: string) => void m.set(k, v),
+  };
   (globalThis as unknown as { window: unknown }).window = {};
   (globalThis as unknown as { localStorage: unknown }).localStorage = ls;
 });
 
 describe("durable roster vs temporary selection", () => {
   it("persists roster and selection independently", () => {
-    const a = newPlayer("  Ann "), b = newPlayer("Bo");
+    const a = newPlayer("  Ann "),
+      b = newPlayer("Bo");
     expect(a.name).toBe("Ann");
     saveRoster([a, b]);
     saveSelection([b.id]);

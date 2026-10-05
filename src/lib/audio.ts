@@ -9,8 +9,7 @@ function ensure(): AudioContext | null {
   if (!ctx) {
     const AC =
       window.AudioContext ||
-      (window as unknown as { webkitAudioContext: typeof AudioContext })
-        .webkitAudioContext;
+      (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
@@ -186,9 +185,7 @@ export function buzzer() {
 }
 
 export function fanfare() {
-  [523, 659, 784, 1046].forEach((f, i) =>
-    tone(f, 0.35, "triangle", 0.45, i * 0.11),
-  );
+  [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.35, "triangle", 0.45, i * 0.11));
 }
 
 /* ---------- Sound V2: light instrumental game bed ---------- */
@@ -246,8 +243,7 @@ export function startMusic() {
 /** Duck the bed toward silence as pressure builds (1 = full, 0 = out). */
 export function setMusicIntensity(level: number) {
   musicDuck = Math.max(0, Math.min(1, level));
-  if (musicGain && ctx)
-    musicGain.gain.setTargetAtTime(0.16 * musicDuck, ctx.currentTime, 0.25);
+  if (musicGain && ctx) musicGain.gain.setTargetAtTime(0.16 * musicDuck, ctx.currentTime, 0.25);
 }
 
 export function stopMusic() {

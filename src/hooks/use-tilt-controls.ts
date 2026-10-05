@@ -30,8 +30,7 @@ interface MotionCtor {
 
 function orientationCtor(): OrientationCtor | undefined {
   if (typeof window === "undefined") return undefined;
-  return (window as unknown as { DeviceOrientationEvent?: OrientationCtor })
-    .DeviceOrientationEvent;
+  return (window as unknown as { DeviceOrientationEvent?: OrientationCtor }).DeviceOrientationEvent;
 }
 function motionCtor(): MotionCtor | undefined {
   if (typeof window === "undefined") return undefined;
@@ -201,8 +200,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     const handler = (e: DeviceOrientationEvent) => {
       const beta = e.beta;
       const gamma = e.gamma;
-      if (beta === null || beta === undefined || gamma === null || gamma === undefined)
-        return;
+      if (beta === null || beta === undefined || gamma === null || gamma === undefined) return;
 
       const now = Date.now();
       const tilt = tiltForOrientation(beta, gamma, angleRef.current);

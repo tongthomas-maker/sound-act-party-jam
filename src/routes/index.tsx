@@ -54,7 +54,6 @@ import {
   setHapticsEnabled,
 } from "@/lib/haptics";
 
-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
@@ -439,11 +438,16 @@ function SoundItGame() {
 
       {paused && (phase === "countdown" || phase === "play") && (
         <div className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-stage/95 px-6 text-center">
-          <p className="text-[12vh] leading-none text-card-yellow" style={{ fontFamily: "var(--font-display)" }}>
+          <p
+            className="text-[12vh] leading-none text-card-yellow"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             PAUSED
           </p>
           <p className="text-lg font-bold text-white/60">
-            {phase === "play" ? `${formatClock(secondsLeft)} left for ${guesser?.name}` : "Countdown paused"}
+            {phase === "play"
+              ? `${formatClock(secondsLeft)} left for ${guesser?.name}`
+              : "Countdown paused"}
           </p>
           <button
             onClick={() => {
@@ -469,14 +473,17 @@ function SoundItGame() {
             updateSelected([...selected, p.id]);
           }}
           onRenamePlayer={(id, n) =>
-            n.trim() && updatePlayers(players.map((p) => (p.id === id ? { ...p, name: n.trim() } : p)))
+            n.trim() &&
+            updatePlayers(players.map((p) => (p.id === id ? { ...p, name: n.trim() } : p)))
           }
           onDeletePlayer={(id) => {
             updatePlayers(players.filter((p) => p.id !== id));
             updateSelected(selected.filter((s) => s !== id));
           }}
           onToggleSelect={(id) =>
-            updateSelected(selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id])
+            updateSelected(
+              selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id],
+            )
           }
           prefs={prefs}
           setPrefs={setPrefs}
@@ -490,7 +497,8 @@ function SoundItGame() {
       {phase === "announce" && guesser && turn && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-6 py-6 text-center">
           <p className="text-sm font-black uppercase tracking-[0.3em] text-white/40">
-            {totalRounds > 1 ? `Round ${turn.round} of ${totalRounds} · ` : ""}Turn {turnIndex + 1} of {turns.length}
+            {totalRounds > 1 ? `Round ${turn.round} of ${totalRounds} · ` : ""}Turn {turnIndex + 1}{" "}
+            of {turns.length}
           </p>
           <h2
             className="si-pop text-[min(14vw,16vh)] leading-[0.9] text-card-pink"
@@ -500,11 +508,16 @@ function SoundItGame() {
           </h2>
           <p className="max-w-md text-lg font-bold text-white/70">
             {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else:{" "}
-            {prefs.mode === "sound" ? "make the sounds" : prefs.mode === "act" ? "act it out" : "follow each card's badge"}
+            {prefs.mode === "sound"
+              ? "make the sounds"
+              : prefs.mode === "act"
+                ? "act it out"
+                : "follow each card's badge"}
             . No words!
           </p>
           <p className="text-base font-black text-white/60">
-            {landscape ? "✅ Sideways — perfect" : "↔️ Turn sideways to play"} · {prefs.roundSeconds}s
+            {landscape ? "✅ Sideways — perfect" : "↔️ Turn sideways to play"} ·{" "}
+            {prefs.roundSeconds}s
           </p>
           <div className="flex flex-wrap justify-center gap-2">
             {fullscreen.supported && !fullscreen.isFullscreen && (
@@ -569,7 +582,9 @@ function SoundItGame() {
             </span>
           </div>
 
-          <div className={`relative flex min-h-0 flex-1 gap-2 ${landscape ? "flex-row" : "flex-col"}`}>
+          <div
+            className={`relative flex min-h-0 flex-1 gap-2 ${landscape ? "flex-row" : "flex-col"}`}
+          >
             <div
               key={cardIndex}
               className={`si-card-in flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.25rem] px-6 text-center ${
@@ -585,7 +600,10 @@ function SoundItGame() {
                   {CLUE_LABEL[card.clueType]}
                 </span>
               )}
-              <h2 className={`${promptSize(card.prompt, landscape)} uppercase`} style={{ fontFamily: "var(--font-display)" }}>
+              <h2
+                className={`${promptSize(card.prompt, landscape)} uppercase`}
+                style={{ fontFamily: "var(--font-display)" }}
+              >
                 {card.prompt}
               </h2>
             </div>
@@ -629,10 +647,16 @@ function SoundItGame() {
 
       {phase === "summary" && guesser && (
         <div className="flex min-h-dvh flex-col items-center justify-center gap-5 px-6 py-6 text-center">
-          <p className="si-pop text-[min(16vw,18vh)] leading-none text-card-pink" style={{ fontFamily: "var(--font-display)" }}>
+          <p
+            className="si-pop text-[min(16vw,18vh)] leading-none text-card-pink"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             TIME!
           </p>
-          <h2 className="text-[min(14vw,14vh)] leading-none text-card-yellow" style={{ fontFamily: "var(--font-display)" }}>
+          <h2
+            className="text-[min(14vw,14vh)] leading-none text-card-yellow"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
             {guesser.name.toUpperCase()}
           </h2>
           <div className="grid w-full max-w-sm grid-cols-3 gap-3">
@@ -706,11 +730,14 @@ function FinalScoreboard({
               t.rank === 1 ? "bg-card-yellow text-black" : "bg-white/8 text-white"
             }`}
           >
-            <span className="shrink-0 text-2xl font-black">{medals[t.rank - 1] ?? `${t.rank}.`}</span>
+            <span className="shrink-0 text-2xl font-black">
+              {medals[t.rank - 1] ?? `${t.rank}.`}
+            </span>
             <span className="min-w-0">
               <span className="block truncate text-xl font-black">{t.name}</span>
               <span className="text-xs font-bold opacity-60">
-                {t.turns} {t.turns === 1 ? "turn" : "turns"} · {t.passes} passed · best streak {t.bestStreak}
+                {t.turns} {t.turns === 1 ? "turn" : "turns"} · {t.passes} passed · best streak{" "}
+                {t.bestStreak}
               </span>
             </span>
             <span className="shrink-0 text-4xl font-black">{t.total}</span>
@@ -725,7 +752,10 @@ function FinalScoreboard({
         >
           PLAY AGAIN
         </button>
-        <button onClick={onNewGame} className="w-full rounded-3xl bg-white/10 py-4 text-lg font-black text-white/70">
+        <button
+          onClick={onNewGame}
+          className="w-full rounded-3xl bg-white/10 py-4 text-lg font-black text-white/70"
+        >
           NEW GAME / CHANGE SETTINGS
         </button>
       </div>

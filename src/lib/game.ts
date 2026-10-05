@@ -126,9 +126,15 @@ export interface PlayerTotal {
 export function aggregateScores(results: TurnResult[]): PlayerTotal[] {
   const map = new Map<string, PlayerTotal>();
   for (const r of results) {
-    const t =
-      map.get(r.playerId) ??
-      { playerId: r.playerId, name: r.name, total: 0, passes: 0, bestStreak: 0, turns: 0, rank: 0 };
+    const t = map.get(r.playerId) ?? {
+      playerId: r.playerId,
+      name: r.name,
+      total: 0,
+      passes: 0,
+      bestStreak: 0,
+      turns: 0,
+      rank: 0,
+    };
     t.name = r.name;
     t.total += r.correct;
     t.passes += r.passes;

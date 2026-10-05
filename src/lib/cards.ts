@@ -15,11 +15,7 @@ export const CATEGORIES: { id: CategoryId; label: string; emoji: string }[] = [
   { id: "whats", label: "What's Happening?!", emoji: "😂" },
 ];
 
-const mk = (
-  category: CategoryId,
-  clueType: ClueType,
-  prompts: string[],
-): Card[] =>
+const mk = (category: CategoryId, clueType: ClueType, prompts: string[]): Card[] =>
   prompts.map((prompt, i) => ({
     id: `${category}-${clueType}-${i}`,
     prompt,

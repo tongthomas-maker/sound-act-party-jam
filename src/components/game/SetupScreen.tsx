@@ -56,7 +56,6 @@ export function SetupScreen({
   const allCats = categories.length === CATEGORIES.length;
   const canStart = activeCount >= MIN_PLAYERS && cardCount > 0;
 
-
   const toggleCat = (id: CategoryId) => {
     if (categories.includes(id)) {
       if (categories.length === 1) return;
@@ -233,9 +232,7 @@ export function SetupScreen({
 
       {/* Mode */}
       <section>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
-          Mode
-        </h2>
+        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">Mode</h2>
         <div className="flex flex-col gap-2">
           {MODES.map((m) => (
             <button
@@ -253,7 +250,7 @@ export function SetupScreen({
       </section>
 
       {/* Categories */}
-      {(
+      {
         <section>
           <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
             Categories
@@ -272,9 +269,7 @@ export function SetupScreen({
                 key={c.id}
                 onClick={() => toggleCat(c.id)}
                 className={`rounded-2xl px-4 py-4 text-sm font-black ${
-                  categories.includes(c.id)
-                    ? "bg-card-blue text-white"
-                    : "bg-white/8 text-white/50"
+                  categories.includes(c.id) ? "bg-card-blue text-white" : "bg-white/8 text-white/50"
                 }`}
               >
                 {c.emoji} {c.label}
@@ -285,7 +280,7 @@ export function SetupScreen({
             {cardCount} cards in this deck
           </p>
         </section>
-      )}
+      }
 
       {/* Round setup */}
       <section>
@@ -299,7 +294,9 @@ export function SetupScreen({
               onClick={() => setPrefs({ roundSeconds: sec })}
               aria-pressed={prefs.roundSeconds === sec}
               className={`rounded-2xl py-3 text-lg font-black ${
-                prefs.roundSeconds === sec ? "bg-card-yellow text-black" : "bg-white/8 text-white/60"
+                prefs.roundSeconds === sec
+                  ? "bg-card-yellow text-black"
+                  : "bg-white/8 text-white/60"
               }`}
             >
               {sec}s
@@ -374,7 +371,6 @@ export function SetupScreen({
           </p>
         )}
       </div>
-
     </div>
   );
 }
