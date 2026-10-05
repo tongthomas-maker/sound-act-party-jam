@@ -206,3 +206,18 @@ export function formatClock(seconds: number) {
   const s = Math.max(0, Math.floor(seconds));
   return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
+
+/* ---------- clock steps (pure; UI owns the intervals) ---------- */
+
+/** One countdown tick. `done` once it reaches 0 (never goes negative). */
+export function stepCountdown(value: number) {
+  const next = Math.max(0, Math.floor(value) - 1);
+  return { value: next, done: next <= 0 };
+}
+
+/** One master-timer second. `expired` exactly once at the 1 → 0 boundary. */
+export function stepRoundClock(left: number) {
+  if (left <= 0) return { left: 0, expired: false };
+  const next = Math.max(0, Math.floor(left) - 1);
+  return { left: next, expired: next === 0 };
+}
