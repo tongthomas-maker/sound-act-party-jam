@@ -8,3 +8,8 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Architecture rules
+- Pure game rules (turns, scoring, gestures, winners, prompt deck) live in `src/lib/game.ts` with vitest tests in `src/lib/__tests__`; keep UI files free of rule logic so rules stay testable.
+- Local preferences go through `src/lib/prefs.ts` (validated parse, defaults on bad data); roster/selection stay in `src/lib/players.ts`.
+- Quick Call content (`src/lib/quickcall.ts`) is kept but not wired into the V1 mode flow.
