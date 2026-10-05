@@ -299,6 +299,7 @@ function SoundItGame() {
 
   useEffect(
     () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
       if (actionFeedbackTimer.current) clearTimeout(actionFeedbackTimer.current);
     },
     [],
@@ -341,6 +342,9 @@ function SoundItGame() {
   };
 
   const beginTurn = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setExit(null);
     unlockAudio();
     setCardIndex(0);
     setStats(emptyStats());
