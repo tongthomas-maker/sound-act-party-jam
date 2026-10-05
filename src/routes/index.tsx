@@ -131,6 +131,7 @@ function SoundItGame() {
   const leftRef = useRef<number>(DEFAULT_PREFS.roundSeconds);
   const [stats, setStats] = useState<TurnStats>(emptyStats());
   const lockRef = useRef(false);
+  const advanceTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fullscreen = useFullscreen();
   const landscape = useIsLandscape();
@@ -286,7 +287,9 @@ function SoundItGame() {
       hapticSkip();
       setStamp("PASS");
     }
-    setTimeout(() => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = setTimeout(() => {
+      advanceTimer.current = null;
       setCard(deckRef.current?.next() ?? null);
       setCardIndex((i) => i + 1);
       setExit(null);
@@ -296,6 +299,7 @@ function SoundItGame() {
 
   useEffect(
     () => () => {
+      if (advanceTimer.current) clearTimeout(advanceTimer.current);
       if (actionFeedbackTimer.current) clearTimeout(actionFeedbackTimer.current);
     },
     [],
@@ -338,6 +342,9 @@ function SoundItGame() {
   };
 
   const beginTurn = () => {
+    if (advanceTimer.current) clearTimeout(advanceTimer.current);
+    advanceTimer.current = null;
+    setExit(null);
     unlockAudio();
     setCardIndex(0);
     setStats(emptyStats());
@@ -501,7 +508,7 @@ function SoundItGame() {
             of {turns.length}
           </p>
           <h2
-            className="si-pop text-[min(14vw,16vh)] leading-[0.9] text-card-pink"
+            className="si-pop max-w-full [overflow-wrap:anywhere] text-[min(14vw,16vh)] leading-[0.9] text-card-pink"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {guesser.name.toUpperCase()} IS GUESSING!
@@ -654,7 +661,7 @@ function SoundItGame() {
             TIME!
           </p>
           <h2
-            className="text-[min(14vw,14vh)] leading-none text-card-yellow"
+            className="max-w-full [overflow-wrap:anywhere] text-[min(14vw,14vh)] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {guesser.name.toUpperCase()}
@@ -673,7 +680,7 @@ function SoundItGame() {
           </div>
           <button
             onClick={goNext}
-            className="mt-2 w-full max-w-sm rounded-3xl bg-card-pink py-5 text-2xl font-black text-white active:scale-[0.98]"
+            className="mt-2 [overflow-wrap:anywhere] px-3 w-full max-w-sm rounded-3xl bg-card-pink py-5 text-2xl font-black text-white active:scale-[0.98]"
             style={{ fontFamily: "var(--font-display)" }}
           >
             {nextTurn ? `PASS TO ${nextTurn.player.name.toUpperCase()} →` : "SEE RESULTS →"}
@@ -713,12 +720,18 @@ function FinalScoreboard({
         FINAL SCORES
       </h2>
       {top.length === 1 && top[0] && (
-        <p data-testid="winner" className="text-center text-lg font-black text-card-lime">
+        <p
+          data-testid="winner"
+          className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime"
+        >
           🎉 {top[0].name} wins with {top[0].total} {top[0].total === 1 ? "point" : "points"}!
         </p>
       )}
       {top.length > 1 && (
-        <p data-testid="winner" className="text-center text-lg font-black text-card-lime">
+        <p
+          data-testid="winner"
+          className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime"
+        >
           🤝 It&apos;s a tie! {top.map((t) => t.name).join(" & ")} — {top[0]?.total} each
         </p>
       )}
