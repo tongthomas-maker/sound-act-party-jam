@@ -466,7 +466,8 @@ function SoundItGame() {
           role="dialog"
           aria-modal="true"
           aria-label="Game paused"
-          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-stage/95 px-6 text-center">
+          className="fixed inset-0 z-[60] flex flex-col items-center justify-center gap-6 bg-stage/95 px-6 text-center"
+        >
           <p
             className="text-[12vh] leading-none text-card-yellow"
             style={{ fontFamily: "var(--font-display)" }}

@@ -63,7 +63,12 @@ describe("rapid mixed button + gesture events", () => {
   it("interleaved taps and gestures on one card score once until release", () => {
     const g = createInputGate();
     let s = emptyStats();
-    const events: ("got" | "pass")[] = ["got", gestureToAction("down"), "pass", gestureToAction("up")];
+    const events: ("got" | "pass")[] = [
+      "got",
+      gestureToAction("down"),
+      "pass",
+      gestureToAction("up"),
+    ];
     for (const e of events) if (g.tryAccept(true, 20)) s = applyAction(s, e);
     expect(s).toMatchObject({ correct: 1, passes: 0 });
     g.release(); // next card
