@@ -720,12 +720,18 @@ function FinalScoreboard({
         FINAL SCORES
       </h2>
       {top.length === 1 && top[0] && (
-        <p data-testid="winner" className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime">
+        <p
+          data-testid="winner"
+          className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime"
+        >
           🎉 {top[0].name} wins with {top[0].total} {top[0].total === 1 ? "point" : "points"}!
         </p>
       )}
       {top.length > 1 && (
-        <p data-testid="winner" className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime">
+        <p
+          data-testid="winner"
+          className="[overflow-wrap:anywhere] text-center text-lg font-black text-card-lime"
+        >
           🤝 It&apos;s a tie! {top.map((t) => t.name).join(" & ")} — {top[0]?.total} each
         </p>
       )}

@@ -44,7 +44,11 @@ describe("complete equal-turn games", () => {
 
   it("cumulative scoring with mixed GOT IT/PASS and a final tie", () => {
     const res = playGame(["a", "b"], 2, (p, r) =>
-      p === "a" ? (r === 1 ? ["got", "pass", "got"] : ["got"]) : ["pass", "got", "got", "got"].slice(0, r === 1 ? 4 : 1),
+      p === "a"
+        ? r === 1
+          ? ["got", "pass", "got"]
+          : ["got"]
+        : (["pass", "got", "got", "got"] as Action[]).slice(0, r === 1 ? 4 : 1),
     );
     const t = aggregateScores(res);
     expect(t.find((x) => x.playerId === "a")?.total).toBe(3);
@@ -80,7 +84,9 @@ describe("mode / category eligibility", () => {
     const either = CARDS.filter((c) => c.clueType === "either");
     expect(either.length).toBeGreaterThan(0);
     for (const m of ["sound", "act", "mix"] as const)
-      expect(filterCards(m, "all").filter((c) => c.clueType === "either")).toHaveLength(either.length);
+      expect(filterCards(m, "all").filter((c) => c.clueType === "either")).toHaveLength(
+        either.length,
+      );
   });
   it("no user-facing label uses the word Either", () => {
     for (const l of Object.values(CLUE_LABEL)) expect(l.toLowerCase()).not.toContain("either");
@@ -123,7 +129,10 @@ describe("input lock & gestures", () => {
   });
   it("canonical mapping: DOWN = GOT IT, UP = PASS", () => {
     expect(applyAction(emptyStats(), gestureToAction("down")).correct).toBe(1);
-    expect(applyAction(emptyStats(), gestureToAction("up"))).toMatchObject({ correct: 0, passes: 1 });
+    expect(applyAction(emptyStats(), gestureToAction("up"))).toMatchObject({
+      correct: 0,
+      passes: 1,
+    });
   });
 });
 
@@ -136,7 +145,10 @@ describe("preferences fallback", () => {
       ...DEFAULT_PREFS,
       music: false,
     });
-    expect(parsePrefs({ roundSeconds: 30, rounds: 2 })).toMatchObject({ roundSeconds: 30, rounds: 2 });
+    expect(parsePrefs({ roundSeconds: 30, rounds: 2 })).toMatchObject({
+      roundSeconds: 30,
+      rounds: 2,
+    });
   });
 });
 
@@ -157,7 +169,14 @@ describe("roster edge cases", () => {
   it("drops malformed, blank and duplicate roster entries", () => {
     m.set(
       "sound-it:roster",
-      JSON.stringify([{ id: "1", name: "Ann" }, null, { id: 2, name: "x" }, { id: "3", name: "   " }, { id: "1", name: "Dup" }, { id: "4", name: "y".repeat(50) }]),
+      JSON.stringify([
+        { id: "1", name: "Ann" },
+        null,
+        { id: 2, name: "x" },
+        { id: "3", name: "   " },
+        { id: "1", name: "Dup" },
+        { id: "4", name: "y".repeat(50) },
+      ]),
     );
     const r = loadRoster();
     expect(r.map((p) => p.id)).toEqual(["1", "4"]);

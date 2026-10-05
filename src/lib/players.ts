@@ -2,7 +2,10 @@ export const MAX_NAME_LENGTH = 20;
 
 /** Trim, collapse whitespace and clamp a display name. */
 export function cleanName(name: string): string {
-  return String(name ?? "").replace(/\s+/g, " ").trim().slice(0, MAX_NAME_LENGTH);
+  return String(name ?? "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, MAX_NAME_LENGTH);
 }
 
 export interface Player {
@@ -40,8 +43,7 @@ export function loadRoster(): Player[] {
     const seen = new Set<string>();
     return roster
       .filter(
-        (p): p is Player =>
-          !!p && typeof p.id === "string" && !!p.id && typeof p.name === "string",
+        (p): p is Player => !!p && typeof p.id === "string" && !!p.id && typeof p.name === "string",
       )
       .map((p) => ({ id: p.id, name: cleanName(p.name) }))
       .filter((p) => p.name && !seen.has(p.id) && (seen.add(p.id), true));
