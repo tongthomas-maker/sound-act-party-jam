@@ -36,14 +36,15 @@ export function parsePrefs(raw: unknown): Prefs {
   const o = (raw && typeof raw === "object" ? raw : {}) as Record<string, unknown>;
   const bool = (k: keyof Prefs) =>
     typeof o[k] === "boolean" ? (o[k] as boolean) : (DEFAULT_PREFS[k] as boolean);
+  const mode = o["mode"];
   return {
     music: bool("music"),
     sfx: bool("sfx"),
     haptics: bool("haptics"),
     flip: bool("flip"),
-    roundSeconds: isRoundLength(o.roundSeconds) ? o.roundSeconds : DEFAULT_PREFS.roundSeconds,
-    rounds: isRoundCount(o.rounds) ? o.rounds : DEFAULT_PREFS.rounds,
-    mode: o.mode === "sound" || o.mode === "act" || o.mode === "mix" ? o.mode : DEFAULT_PREFS.mode,
+    roundSeconds: isRoundLength(o["roundSeconds"]) ? o["roundSeconds"] : DEFAULT_PREFS.roundSeconds,
+    rounds: isRoundCount(o["rounds"]) ? o["rounds"] : DEFAULT_PREFS.rounds,
+    mode: mode === "sound" || mode === "act" || mode === "mix" ? mode : DEFAULT_PREFS.mode,
   };
 }
 
