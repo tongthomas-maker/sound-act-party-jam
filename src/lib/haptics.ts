@@ -30,7 +30,7 @@ export function hapticGotIt() {
   buzz(28);
 }
 
-/** SKIP — two short light pulses. */
+/** PASS (card) — two short light pulses. */
 export function hapticSkip() {
   buzz([14, 60, 14]);
 }
