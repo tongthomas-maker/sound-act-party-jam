@@ -25,9 +25,9 @@ export type TiltPhase = "HOLD" | "READY" | "LOCKED" | "WAIT_FOR_RETURN";
 export interface TiltMachine {
   phase: TiltPhase;
   /** HOLD/WAIT: when stillness began (0 = not still); LOCKED: when lock began. */
-  since: number;
+  since: number | null;
 }
-export const initialTiltMachine = (): TiltMachine => ({ phase: "HOLD", since: 0 });
+export const initialTiltMachine = (): TiltMachine => ({ phase: "HOLD", since: null });
 
 /**
  * Pure tilt state machine. `v` = signed delta from baseline, positive = DOWN.
@@ -43,9 +43,9 @@ export function stepTilt(
     case "HOLD":
     case "WAIT_FOR_RETURN": {
       const need = m.phase === "HOLD" ? HOLD_MS : RETURN_MS;
-      if (!near) return { machine: { phase: m.phase, since: 0 }, fire: null };
-      const since = m.since || now;
-      if (now - since >= need) return { machine: { phase: "READY", since: 0 }, fire: null };
+      if (!near) return { machine: { phase: m.phase, since: null }, fire: null };
+      const since = m.since ?? now;
+      if (now - since >= need) return { machine: { phase: "READY", since: null }, fire: null };
       return { machine: { phase: m.phase, since }, fire: null };
     }
     case "READY":
@@ -53,8 +53,8 @@ export function stepTilt(
       if (v < -TRIGGER_DEG) return { machine: { phase: "LOCKED", since: now }, fire: "pass" };
       return { machine: m, fire: null };
     case "LOCKED":
-      if (now - m.since >= LOCK_MS)
-        return stepTilt({ phase: "WAIT_FOR_RETURN", since: 0 }, v, now);
+      if (now - (m.since ?? now) >= LOCK_MS)
+        return stepTilt({ phase: "WAIT_FOR_RETURN", since: null }, v, now);
       return { machine: m, fire: null };
   }
 }
