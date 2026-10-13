@@ -11,15 +11,10 @@ interface Options {
   preferOn?: boolean;
 }
 
-/* ---- gesture tuning ---- */
-const CALIBRATE_MS = 450; // settle time before the neutral zone is trusted
-const TRIGGER_DEG = 34; // deliberate tilt away from neutral
-const REARM_DEG = 14; // must come back this close to neutral
-const CONFIRM_SAMPLES = 3; // consecutive samples agreeing on direction
-const SAMPLE_MIN_DEG = 12; // per-sample minimum offset to count toward a gesture
-const MIN_RATE = 26; // deg/sec — gesture must be travelling, not drifting
-const LOCK_MS = 650; // input lock after a trigger
-const NEUTRAL_DRIFT = 0.012; // slow neutral follow while resting
+/* ---- gesture tuning (fixed thresholds) ---- */
+const TRIGGER_DEG = 35; // |tilt| beyond this fires a gesture
+const DEADZONE_DEG = 10; // -10..10 is neutral; must return here to re-arm
+const LOCK_MS = 1000; // ignore all orientation events for 1s after a trigger
 
 interface OrientationCtor {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -66,32 +61,20 @@ export function tiltForOrientation(beta: number, gamma: number, angle: number): 
 export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Options) {
   const [permission, setPermission] = useState<Permission>("unsupported");
   const [motionOn, setMotionOn] = useState(false);
+  const [debugTilt, setDebugTilt] = useState<number | null>(null);
 
   const cbs = useRef({ onUp, onDown });
   cbs.current = { onUp, onDown };
 
   // gesture state
-  const neutral = useRef<number | null>(null);
-  const calibratedAt = useRef(0);
   const armed = useRef(true);
   const lockedUntil = useRef(0);
-  const streakDir = useRef(0);
-  const streakCount = useRef(0);
-  const lastTilt = useRef<number | null>(null);
-  const lastTime = useRef(0);
-  const accelDir = useRef(0); // -1 / 0 / 1 from devicemotion
-  const accelAt = useRef(0);
   const angleRef = useRef(0);
+  const lastDebugAt = useRef(0);
 
   const recalibrate = useCallback(() => {
-    neutral.current = null;
-    calibratedAt.current = 0;
     armed.current = true;
     lockedUntil.current = 0;
-    streakDir.current = 0;
-    streakCount.current = 0;
-    lastTilt.current = null;
-    accelDir.current = 0;
   }, []);
 
   useEffect(() => {
@@ -147,7 +130,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     if (permission === "granted") setMotionOn(true);
   }, [motionOn, permission, requestPermission]);
 
-  /* ---- screen orientation changes invalidate calibration ---- */
+  /* ---- screen orientation changes invalidate arming ---- */
   useEffect(() => {
     if (!motionOn) return;
     angleRef.current = screenAngle();
@@ -163,30 +146,6 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       window.screen?.orientation?.removeEventListener?.("change", onChange);
     };
   }, [motionOn, recalibrate]);
-
-  /* ---- devicemotion: confirms deliberate movement direction ---- */
-  useEffect(() => {
-    if (!enabled || !motionOn || permission !== "granted") return;
-    if (!motionCtor()) return;
-    const handler = (e: DeviceMotionEvent) => {
-      const rate = e.rotationRate;
-      if (!rate) return;
-      const angle = angleRef.current;
-      const raw =
-        angle === 90
-          ? -(rate.gamma ?? 0)
-          : angle === -90 || angle === 270
-            ? (rate.gamma ?? 0)
-            : angle === 180
-              ? -(rate.beta ?? 0)
-              : (rate.beta ?? 0);
-      if (Math.abs(raw) < 25) return;
-      accelDir.current = raw > 0 ? 1 : -1;
-      accelAt.current = Date.now();
-    };
-    window.addEventListener("devicemotion", handler);
-    return () => window.removeEventListener("devicemotion", handler);
-  }, [enabled, motionOn, permission]);
 
   /* ---- orientation: primary gesture detection ---- */
   useEffect(() => {
@@ -205,74 +164,31 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       const now = Date.now();
       const tilt = tiltForOrientation(beta, gamma, angleRef.current);
 
-      if (neutral.current === null) {
-        neutral.current = tilt;
-        calibratedAt.current = now;
-        lastTilt.current = tilt;
-        lastTime.current = now;
-        return;
+      // debug display (throttled to ~10fps to avoid re-render churn)
+      if (now - lastDebugAt.current > 100) {
+        lastDebugAt.current = now;
+        setDebugTilt(Math.round(tilt));
       }
 
-      const delta = tilt - neutral.current;
-      const dt = Math.max((now - lastTime.current) / 1000, 0.001);
-      const rate = ((lastTilt.current ?? tilt) - tilt) / dt; // deg/sec magnitude source
-      const velocity = (tilt - (lastTilt.current ?? tilt)) / dt;
-      void rate;
-      lastTilt.current = tilt;
-      lastTime.current = now;
-
-      // still settling into the resting position
-      if (now - calibratedAt.current < CALIBRATE_MS) {
-        neutral.current = neutral.current * 0.7 + tilt * 0.3;
-        return;
-      }
-
-      // re-arming: wait until back near neutral
-      if (!armed.current) {
-        streakDir.current = 0;
-        streakCount.current = 0;
-        if (Math.abs(delta) < REARM_DEG && now > lockedUntil.current) {
-          armed.current = true;
-          neutral.current = neutral.current * 0.8 + tilt * 0.2;
-        }
-        return;
-      }
-
+      // hard lock: ignore every event for LOCK_MS after a trigger
       if (now < lockedUntil.current) return;
 
-      // resting: let neutral follow slow grip drift
-      if (Math.abs(delta) < SAMPLE_MIN_DEG) {
-        neutral.current += (tilt - neutral.current) * NEUTRAL_DRIFT;
-        streakDir.current = 0;
-        streakCount.current = 0;
+      // re-arm only once back inside the deadzone
+      if (!armed.current) {
+        if (Math.abs(tilt) < DEADZONE_DEG) armed.current = true;
         return;
       }
 
-      const dir = delta > 0 ? 1 : -1;
-      const moving = Math.abs(velocity) > MIN_RATE || Math.abs(delta) > TRIGGER_DEG;
-      if (!moving) return;
-
-      if (streakDir.current === dir) streakCount.current += 1;
-      else {
-        streakDir.current = dir;
-        streakCount.current = 1;
+      // tilt < -35 = down (GOT IT!), tilt > 35 = up (PASS)
+      if (tilt <= -TRIGGER_DEG) {
+        armed.current = false;
+        lockedUntil.current = now + LOCK_MS;
+        cbs.current.onDown();
+      } else if (tilt >= TRIGGER_DEG) {
+        armed.current = false;
+        lockedUntil.current = now + LOCK_MS;
+        cbs.current.onUp();
       }
-
-      if (streakCount.current < CONFIRM_SAMPLES) return;
-      if (Math.abs(delta) < TRIGGER_DEG) return;
-
-      // if devicemotion is available and recent, it must agree on direction
-      const accelFresh = now - accelAt.current < 500;
-      if (accelFresh && accelDir.current !== 0 && accelDir.current !== dir) return;
-
-      armed.current = false;
-      lockedUntil.current = now + LOCK_MS;
-      streakDir.current = 0;
-      streakCount.current = 0;
-      accelDir.current = 0;
-
-      if (dir > 0) cbs.current.onUp();
-      else cbs.current.onDown();
     };
 
     window.addEventListener("deviceorientation", handler);
@@ -285,5 +201,6 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     motionOn,
     toggleMotion,
     recalibrate,
+    debugTilt,
   };
 }

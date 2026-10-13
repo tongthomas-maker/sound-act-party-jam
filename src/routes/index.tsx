@@ -701,6 +701,14 @@ function SoundItGame() {
               ⏱ {formatClock(secondsLeft)}
             </span>
             <span className="rounded-full bg-white/10 px-3 py-1">✓ {stats.correct + bonus}</span>
+            {tilt.motionOn && tilt.debugTilt !== null && (
+              <span
+                data-testid="tilt-debug"
+                className="rounded-full bg-white/10 px-3 py-1 tabular-nums text-white/60"
+              >
+                β {tilt.debugTilt}°
+              </span>
+            )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
               {guesser?.name}
             </span>
