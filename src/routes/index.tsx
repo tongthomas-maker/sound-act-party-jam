@@ -711,6 +711,16 @@ function SoundItGame() {
                 {` ${tilt.debug.state}`}
               </span>
             )}
+            {tilt.motionOn && (
+              <button
+                type="button"
+                onClick={tilt.toggleSwap}
+                aria-pressed={tilt.swapped}
+                className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
+              >
+                ⇅ {tilt.swapped ? "Swapped" : "Swap tilt"}
+              </button>
+            )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
               {guesser?.name}
             </span>
