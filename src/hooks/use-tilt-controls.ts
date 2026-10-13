@@ -17,6 +17,8 @@ export const TRIGGER_DEG = 18;
 export const HOLD_DEG = 15;
 export const LOCK_MS = 600;
 export const HOLD_MS = 800;
+const CALIBRATE_MS = 800;
+const CAL_HOLD_MS = 500;
 
 export type TiltPhase = "HOLD" | "READY" | "LOCKED";
 export interface TiltMachine {
