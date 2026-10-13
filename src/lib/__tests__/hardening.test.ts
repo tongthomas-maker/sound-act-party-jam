@@ -151,7 +151,7 @@ describe("per-device tilt defaults", () => {
     expect(detectDevice("Mozilla (iPad; CPU OS 17)")).toBe("iPad");
     expect(detectDevice("Mozilla (iPhone; CPU iPhone OS 17)")).toBe("iPhone");
     expect(detectDevice("Android")).toBe("other");
-    expect(swapKey("iPhone")).toBe("tiltSwap_iPhone");
+    expect(swapKey("iPhone")).toBe("tiltDir_iPhone");
   });
   it("iPhone is inverted with 1500ms lock; iPad normal with 1000ms", () => {
     expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 1500 });
