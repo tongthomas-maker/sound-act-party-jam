@@ -12,10 +12,13 @@ interface Options {
 }
 
 /* ---- gesture tuning (fixed thresholds) ---- */
-const TRIGGER_DEG = 22; // |delta| past this fires
-const REARM_DEG = 12; // return within this to re-arm (instant, no dwell)
-const LOCK_MS = 700; // ignore all orientation after a trigger
+const TRIGGER_DEG = 24; // |delta| past this fires
+const DEADZONE_DEG = 14; // must be inside this to be NEUTRAL/armed
+const REARM_DEG = 12; // WAIT_NEUTRAL: |delta| under this…
+const REARM_DWELL_MS = 250; // …held this long re-arms
+const LOCK_MS = 1000; // ignore all orientation after a trigger
 const CALIBRATE_MS = 800; // average this long to find the neutral baseline
+const THROTTLE_MS = 80; // min time between processed orientation events
 
 type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
