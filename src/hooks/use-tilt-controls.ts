@@ -12,11 +12,15 @@ interface Options {
 }
 
 /* ---- gesture tuning (fixed thresholds) ---- */
-const TRIGGER_DEG = 35; // portrait: |beta delta| beyond this fires
-const LANDSCAPE_TRIGGER_DEG = 30; // landscape: |gamma delta| beyond this fires
-const DEADZONE_DEG = 10; // within ±10 of baseline is neutral; must return to re-arm
-const LOCK_MS = 1200; // ignore all orientation events after a trigger
-const CALIBRATE_MS = 1000; // average this long to find the neutral baseline
+const TRIGGER_DEG = 30; // |delta| past this fires (hysteresis high)
+const REARM_DEG = 12; // must return within this to re-arm (hysteresis low)
+const REARM_HOLD_MS = 300; // ...and stay there this long
+const DEADZONE_DEG = 20; // last armed sample must be inside this for a fire to count
+const LOCK_MS = 1200; // ignore all orientation after a trigger
+const CALIBRATE_MS = 800; // average this long to find the neutral baseline
+const THROTTLE_MS = 100; // process at most one orientation sample per 100ms
+
+type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
 interface TiltDebug {
   beta: number;
@@ -25,6 +29,7 @@ interface TiltDebug {
   delta: number;
   calibrating: boolean;
   locked: boolean;
+  state: string;
 }
 
 interface OrientationCtor {
@@ -170,58 +175,73 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     let baseline: number | null = null;
     let samples: number[] = [];
     let wasLandscape = isLandscape();
+    let state: TiltState = "WAIT_NEUTRAL"; // must settle after calibration before arming
+    let neutralSince = 0;
+    let lastSampleAt = 0;
+    let lastAbs = 0;
 
     const handler = (e: DeviceOrientationEvent) => {
       const beta = e.beta;
       const gamma = e.gamma;
       if (beta == null || gamma == null) return;
       const now = Date.now();
+      // throttle processing to one sample per THROTTLE_MS
+      if (now - lastSampleAt < THROTTLE_MS) return;
+      lastSampleAt = now;
+
       const landscape = isLandscape();
       if (landscape !== wasLandscape) {
         wasLandscape = landscape;
         baseline = null;
         samples = [];
-        lockedUntil.current = now + 600;
+        state = "WAIT_NEUTRAL";
+        neutralSince = 0;
       }
       const raw = landscape ? gamma : beta;
-      const calibrating = baseline === null;
-      if (calibrating) {
+      if (baseline === null) {
         samples.push(raw);
-        if (now - startedAt >= CALIBRATE_MS || samples.length > 60) {
+        if (now - startedAt >= CALIBRATE_MS || samples.length >= 8) {
           baseline = samples.reduce((a, b) => a + b, 0) / samples.length;
         }
       }
       const delta = baseline === null ? 0 : raw - baseline;
-      const locked = now < lockedUntil.current;
+      const abs = Math.abs(delta);
 
-      if (now - lastDebugAt.current > 100) {
-        lastDebugAt.current = now;
-        setDebug({
-          beta: Math.round(beta),
-          gamma: Math.round(gamma),
-          landscape,
-          delta: Math.round(delta),
-          calibrating: baseline === null,
-          locked,
-        });
+      // LOCKED → WAIT_NEUTRAL once lock elapses
+      if (state === "LOCKED" && now >= lockedUntil.current) {
+        state = "WAIT_NEUTRAL";
+        neutralSince = 0;
+      }
+      if (state === "WAIT_NEUTRAL" && baseline !== null) {
+        if (abs < REARM_DEG) {
+          if (!neutralSince) neutralSince = now;
+          if (now - neutralSince >= REARM_HOLD_MS) state = "NEUTRAL";
+        } else neutralSince = 0;
       }
 
-      if (baseline === null || locked) return;
-      const trigger = landscape ? LANDSCAPE_TRIGGER_DEG : TRIGGER_DEG;
-      if (!armed.current) {
-        if (Math.abs(delta) < DEADZONE_DEG) armed.current = true;
-        return;
-      }
-      // negative = down (GOT IT!), positive = up (PASS)
-      if (delta <= -trigger) {
-        armed.current = false;
+      setDebug({
+        beta: Math.round(beta),
+        gamma: Math.round(gamma),
+        landscape,
+        delta: Math.round(delta),
+        calibrating: baseline === null,
+        locked: state === "LOCKED",
+        state,
+      });
+
+      // fire only from NEUTRAL, crossing the trigger from a near-neutral position
+      if (state === "NEUTRAL" && abs >= TRIGGER_DEG && lastAbs < DEADZONE_DEG) {
+        state = "TRIGGERED";
+        if (delta < 0) cbs.current.onDown(); // down = GOT IT!
+        else cbs.current.onUp(); // up = PASS
         lockedUntil.current = now + LOCK_MS;
-        cbs.current.onDown();
-      } else if (delta >= trigger) {
-        armed.current = false;
-        lockedUntil.current = now + LOCK_MS;
-        cbs.current.onUp();
+        state = "LOCKED";
+      } else if (state === "NEUTRAL" && abs >= TRIGGER_DEG) {
+        // drifted over slowly without a clean gesture: require re-centre
+        state = "WAIT_NEUTRAL";
+        neutralSince = 0;
       }
+      if (state === "NEUTRAL") lastAbs = abs;
     };
 
     window.addEventListener("deviceorientation", handler);
