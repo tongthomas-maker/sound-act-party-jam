@@ -1,3 +1,4 @@
+// @refresh reset
 import { useCallback, useEffect, useRef, useState } from "react";
 
 type Permission = "unsupported" | "needs-permission" | "granted" | "denied";
