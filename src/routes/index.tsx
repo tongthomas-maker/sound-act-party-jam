@@ -239,10 +239,10 @@ function SoundItGame() {
     const tickLoop = () => {
       const left = leftRef.current;
       if (left <= 0) return;
+      // last 10s: the clock below fires one 800Hz beep + light haptic per second
       if (left <= 10) {
-        /* last-10 beep fires once per second from the clock below */
-      } else if (false) tick(2);
-      else if (left <= PRESSURE_SECONDS) tick(1);
+        /* no extra tick */
+      } else if (left <= PRESSURE_SECONDS) tick(1);
       else tick(0);
       if (left <= PRESSURE_SECONDS) {
         beatCount += 1;
@@ -464,7 +464,6 @@ function SoundItGame() {
   /* ---------- render ---------- */
   return (
     <main
-      key={fx?.kind === "pass" ? `shake-${fx.id}` : "main"}
       className={`min-h-dvh bg-stage text-white select-none ${fx?.kind === "pass" ? "si-shake" : ""}`}
     >
       {fx && (
