@@ -327,6 +327,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     debug,
     swapped,
     toggleSwap,
+    setDownAsCorrect,
     debugTilt: debug ? debug.delta : null,
   };
 }

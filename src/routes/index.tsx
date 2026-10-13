@@ -707,8 +707,10 @@ function SoundItGame() {
                 data-testid="tilt-debug"
                 className="rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/60"
               >
-                β {tilt.debug.beta}° γ {tilt.debug.gamma}° {tilt.debug.landscape ? "L" : "P"}
-                {tilt.debug.calibrating ? " cal…" : ` Δ${tilt.debug.delta}°`}
+                {tilt.debug.source === "motion"
+                  ? `tilt ${tilt.debug.tiltDeg}° Δ${tilt.debug.delta}m/s²`
+                  : `γ ${tilt.debug.gamma}° β ${tilt.debug.beta}° Δ${tilt.debug.delta}°`}
+                {` ${tilt.debug.landscape ? "L" : "P"}`}
                 {` ${tilt.debug.state}`}
               </span>
             )}
@@ -720,6 +722,15 @@ function SoundItGame() {
                 className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
               >
                 ⇅ {tilt.swapped ? "Swapped" : "Swap tilt"}
+              </button>
+            )}
+            {tilt.motionOn && (
+              <button
+                type="button"
+                onClick={() => tilt.setDownAsCorrect()}
+                className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
+              >
+                Set DOWN as CORRECT
               </button>
             )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
