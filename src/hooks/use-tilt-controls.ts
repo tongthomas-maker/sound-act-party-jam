@@ -227,7 +227,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     };
   }, [motionOn, recalibrate]);
 
-  /* ---- v15 gesture detection: orientation angle only, single axis ---- */
+  /* ---- v16 gesture detection: orientation angle only, single axis, rebase after lock ---- */
   useEffect(() => {
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
