@@ -12,13 +12,10 @@ interface Options {
 }
 
 /* ---- gesture tuning (fixed thresholds) ---- */
-const TRIGGER_DEG = 30; // |delta| past this fires (hysteresis high)
-const REARM_DEG = 12; // must return within this to re-arm (hysteresis low)
-const REARM_HOLD_MS = 300; // ...and stay there this long
-const DEADZONE_DEG = 20; // last armed sample must be inside this for a fire to count
-const LOCK_MS = 1200; // ignore all orientation after a trigger
+const TRIGGER_DEG = 22; // |delta| past this fires
+const REARM_DEG = 12; // return within this to re-arm (instant, no dwell)
+const LOCK_MS = 700; // ignore all orientation after a trigger
 const CALIBRATE_MS = 800; // average this long to find the neutral baseline
-const THROTTLE_MS = 100; // process at most one orientation sample per 100ms
 
 type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
@@ -87,6 +84,18 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const lockedUntil = useRef(0);
   const angleRef = useRef(0);
   const lastDebugAt = useRef(0);
+  const swapRef = useRef(1);
+  const [swapped, setSwapped] = useState(false);
+  useEffect(() => {
+    try {
+      if (localStorage.getItem("tiltSwap") === "1") {
+        swapRef.current = -1;
+        setSwapped(true);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   const recalibrate = useCallback(() => {
     armed.current = true;
@@ -110,6 +119,14 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     const O = orientationCtor();
     if (!O) return false;
     try {
+      const M = motionCtor();
+      if (M && typeof M.requestPermission === "function") {
+        try {
+          await M.requestPermission();
+        } catch {
+          /* motion is optional */
+        }
+      }
       if (typeof O.requestPermission === "function") {
         const res = await O.requestPermission();
         if (res !== "granted") {
@@ -117,10 +134,9 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
           return false;
         }
       }
-      const M = motionCtor();
-      if (M && typeof M.requestPermission === "function") {
+      {
         try {
-          await M.requestPermission();
+          /* noop */
         } catch {
           /* motion is an optional confirmation signal */
         }
@@ -170,83 +186,79 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       return;
     }
     recalibrate();
-    angleRef.current = screenAngle();
     const startedAt = Date.now();
-    let baseline: number | null = null;
-    let samples: number[] = [];
-    let wasLandscape = isLandscape();
-    let state: TiltState = "WAIT_NEUTRAL"; // must settle after calibration before arming
-    let neutralSince = 0;
-    let lastSampleAt = 0;
-    let lastAbs = 0;
+    let bSum = 0;
+    let gSum = 0;
+    let count = 0;
+    let baseB = 0;
+    let baseG = 0;
+    let calibrated = false;
+    let state: TiltState = "NEUTRAL";
+    let unlockTimer: ReturnType<typeof setTimeout> | undefined;
 
     const handler = (e: DeviceOrientationEvent) => {
-      const beta = e.beta;
-      const gamma = e.gamma;
-      if (beta == null || gamma == null) return;
+      const beta = e.beta ?? 0;
+      const gamma = e.gamma ?? 0;
       const now = Date.now();
-      // throttle processing to one sample per THROTTLE_MS
-      if (now - lastSampleAt < THROTTLE_MS) return;
-      lastSampleAt = now;
-
-      const landscape = isLandscape();
-      if (landscape !== wasLandscape) {
-        wasLandscape = landscape;
-        baseline = null;
-        samples = [];
-        state = "WAIT_NEUTRAL";
-        neutralSince = 0;
+      if (!calibrated) {
+        bSum += beta;
+        gSum += gamma;
+        count++;
+        baseB = bSum / count;
+        baseG = gSum / count;
+        if (now - startedAt < CALIBRATE_MS) return;
+        calibrated = true;
       }
-      const raw = landscape ? gamma : beta;
-      if (baseline === null) {
-        samples.push(raw);
-        if (now - startedAt >= CALIBRATE_MS || samples.length >= 8) {
-          baseline = samples.reduce((a, b) => a + b, 0) / samples.length;
-        }
-      }
-      const delta = baseline === null ? 0 : raw - baseline;
+      if (now < lockedUntil.current && state !== "LOCKED") return; // rotation guard
+      const dB = beta - baseB;
+      const dG = gamma - baseG;
+      const useG = Math.abs(dG) > Math.abs(dB);
+      const delta = (useG ? dG : dB) * swapRef.current;
       const abs = Math.abs(delta);
 
-      // LOCKED → WAIT_NEUTRAL once lock elapses
-      if (state === "LOCKED" && now >= lockedUntil.current) {
-        state = "WAIT_NEUTRAL";
-        neutralSince = 0;
-      }
-      if (state === "WAIT_NEUTRAL" && baseline !== null) {
-        if (abs < REARM_DEG) {
-          if (!neutralSince) neutralSince = now;
-          if (now - neutralSince >= REARM_HOLD_MS) state = "NEUTRAL";
-        } else neutralSince = 0;
+      if (now - lastDebugAt.current >= 100) {
+        lastDebugAt.current = now;
+        setDebug({
+          beta: Math.round(beta),
+          gamma: Math.round(gamma),
+          landscape: useG,
+          delta: Math.round(delta),
+          calibrating: false,
+          locked: state === "LOCKED",
+          state,
+        });
       }
 
-      setDebug({
-        beta: Math.round(beta),
-        gamma: Math.round(gamma),
-        landscape,
-        delta: Math.round(delta),
-        calibrating: baseline === null,
-        locked: state === "LOCKED",
-        state,
-      });
-
-      // fire only from NEUTRAL, crossing the trigger from a near-neutral position
-      if (state === "NEUTRAL" && abs >= TRIGGER_DEG && lastAbs < DEADZONE_DEG) {
-        state = "TRIGGERED";
-        if (delta < 0) cbs.current.onDown(); // down = GOT IT!
-        else cbs.current.onUp(); // up = PASS
-        lockedUntil.current = now + LOCK_MS;
-        state = "LOCKED";
-      } else if (state === "NEUTRAL" && abs >= TRIGGER_DEG) {
-        // drifted over slowly without a clean gesture: require re-centre
-        state = "WAIT_NEUTRAL";
-        neutralSince = 0;
+      if (state === "LOCKED") return;
+      if (state === "WAIT_NEUTRAL") {
+        if (abs < REARM_DEG) state = "NEUTRAL"; // instant re-arm
+        return;
       }
-      if (state === "NEUTRAL") lastAbs = abs;
+      if (abs < TRIGGER_DEG) return;
+      state = "LOCKED";
+      if (delta < 0) cbs.current.onDown(); // DOWN = GOT IT!
+      else cbs.current.onUp(); // UP = PASS
+      unlockTimer = setTimeout(() => {
+        state = "WAIT_NEUTRAL";
+      }, LOCK_MS);
     };
 
     window.addEventListener("deviceorientation", handler);
-    return () => window.removeEventListener("deviceorientation", handler);
+    return () => {
+      window.removeEventListener("deviceorientation", handler);
+      if (unlockTimer) clearTimeout(unlockTimer);
+    };
   }, [enabled, motionOn, permission, recalibrate]);
+
+  const toggleSwap = useCallback(() => {
+    swapRef.current *= -1;
+    setSwapped(swapRef.current === -1);
+    try {
+      localStorage.setItem("tiltSwap", swapRef.current === -1 ? "1" : "0");
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   return {
     supported: permission !== "unsupported",
