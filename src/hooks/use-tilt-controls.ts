@@ -13,15 +13,15 @@ interface Options {
 }
 
 /* ---- gesture tuning ---- */
-const M_TRIGGER = 3.5; // m/s² on gravity Y (~20°)
-const M_REARM = 1.5; // m/s² neutral band
+const M_TRIGGER = 3.4; // m/s² on gravity Y (~20°)
+const M_REARM = 1.7; // m/s² neutral band (~10°)
 const TRIGGER_DEG = 20; // orientation fallback
 const REARM_DEG = 10; // orientation fallback neutral band
 const NEUTRAL_HOLD_MS = 400; // WAIT_NEUTRAL dwell before re-arming
 const OPPOSITE_BLOCK_MS = 500; // after re-arm, opposite gesture blocked this long
-const LOCK_MS = 1200; // ignore everything after a trigger
+const LOCK_MS = 1000; // ignore everything after a trigger
 const CALIBRATE_MS = 800; // baseline averaging window
-const THROTTLE_MS = 100; // min time between processed events
+const THROTTLE_MS = 80; // min time between processed events
 
 type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
@@ -197,6 +197,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     let neutralSince = 0;
     let neutralAt = 0; // when we last re-armed
     let lastAction: "down" | "up" | null = null;
+    let prevDelta = 0; // last processed delta, for crossing detection
     let unlockTimer: ReturnType<typeof setTimeout> | undefined;
 
     const process = (raw: number, tiltDeg: number, beta: number, gamma: number, unit: "m" | "d") => {
@@ -219,6 +220,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       lastRawDelta.current = rawDelta;
       const delta = rawDelta * swapRef.current;
       const abs = Math.abs(delta);
+      const crossed = Math.abs(prevDelta) < trigger && abs >= trigger; // away-from-center crossing
+      prevDelta = delta;
 
       if (now - lastDebugAt.current >= 100) {
         lastDebugAt.current = now;
@@ -249,8 +252,9 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
           } else neutralSince = 0;
           return;
         case "NEUTRAL": {
-          if (abs < trigger) return;
-          const kind = delta < 0 ? "down" : "up";
+          // fire only on a fresh crossing away from center — never on return
+          if (!crossed) return;
+          const kind = delta > 0 ? "down" : "up"; // DOWN positive = CORRECT
           // block the opposite gesture until neutral + 500ms (bounce-back guard)
           if (lastAction && kind !== lastAction && now - neutralAt < OPPOSITE_BLOCK_MS) return;
           state = "LOCKED";
@@ -313,7 +317,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const setDownAsCorrect = useCallback(() => {
     const d = lastRawDelta.current;
     if (Math.abs(d) < 0.5) return false;
-    swapRef.current = d < 0 ? 1 : -1;
+    swapRef.current = d > 0 ? 1 : -1; // make current tilt direction read as positive = DOWN = CORRECT
     persistSwap();
     return true;
   }, []);
