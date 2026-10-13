@@ -282,7 +282,14 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
         show(now);
         return;
       }
-      delta = raw - baseline;
+      /* v16: once the post-action lock expires, rebase the baseline to the
+         current angle so the next flick works from wherever the phone is. */
+      if (m.phase === "LOCKED" && now - (m.since ?? now) >= LOCK_MS) {
+        rebase = raw - baseline;
+        delta = 0;
+      } else {
+        delta = raw - baseline - rebase;
+      }
       show(now);
       if (now < lockedUntil.current) return;
 
