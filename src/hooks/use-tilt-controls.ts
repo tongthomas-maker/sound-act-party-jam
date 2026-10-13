@@ -340,3 +340,10 @@ function isLandscape(): boolean {
   if (a === 90 || a === 270) return true;
   return window.innerWidth > window.innerHeight;
 }
+
+// Dev only: hook shape changes can't be hot-swapped into a mounted game, so reload fully.
+if (import.meta.hot) {
+  import.meta.hot.accept(() => {
+    window.location.reload();
+  });
+}
