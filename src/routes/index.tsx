@@ -313,7 +313,7 @@ function SoundItGame() {
       actionFeedbackTimer.current = null;
     }, 300);
     const next = applyAction(stats, kind);
-    setStats(next);
+    setStats((s) => applyAction(s, kind));
     setBonus((b) => b + fireBonus(stats.streak, kind));
     if (card) {
       const entry = { prompt: card.prompt, action: kind, ms: Date.now() - cardShownAt.current };
@@ -701,12 +701,14 @@ function SoundItGame() {
               ⏱ {formatClock(secondsLeft)}
             </span>
             <span className="rounded-full bg-white/10 px-3 py-1">✓ {stats.correct + bonus}</span>
-            {tilt.motionOn && tilt.debugTilt !== null && (
+            {tilt.motionOn && tilt.debug && (
               <span
                 data-testid="tilt-debug"
-                className="rounded-full bg-white/10 px-3 py-1 tabular-nums text-white/60"
+                className="rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/60"
               >
-                β {tilt.debugTilt}°
+                β {tilt.debug.beta}° γ {tilt.debug.gamma}° {tilt.debug.landscape ? "L" : "P"}
+                {tilt.debug.calibrating ? " cal…" : ` Δ${tilt.debug.delta}°`}
+                {tilt.debug.locked ? " 🔒" : ""}
               </span>
             )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
