@@ -153,8 +153,43 @@ describe("per-device tilt defaults", () => {
     expect(detectDevice("Android")).toBe("other");
     expect(swapKey("iPhone")).toBe("tiltDir_iPhone");
   });
-  it("iPhone is inverted with 1500ms lock; iPad normal with 1000ms", () => {
-    expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 1500 });
-    expect(deviceTiltDefaults("iPad")).toEqual({ sign: 1, lockMs: 1000 });
+  it("iPhone defaults to -1, iPad +1, both lock 1200ms", () => {
+    expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 1200 });
+    expect(deviceTiltDefaults("iPad")).toEqual({ sign: 1, lockMs: 1200 });
+  });
+});
+
+import { stepTilt, initialTiltMachine, type TiltMachine } from "../../hooks/use-tilt-controls";
+describe("v15 tilt state machine", () => {
+  const run = (m: TiltMachine, v: number, t: number) => stepTilt(m, v, t);
+  const ready = (): TiltMachine => {
+    let m = run(initialTiltMachine(), 0, 0).machine;
+    m = run(m, 3, 800).machine;
+    return m;
+  };
+  it("needs 0.8s still within 8 deg before READY", () => {
+    let m = run(initialTiltMachine(), 0, 0).machine;
+    expect(run(m, 0, 799).machine.phase).toBe("HOLD");
+    m = run(m, 9, 400).machine; // moved -> restart
+    expect(run(m, 0, 1000).machine.phase).toBe("HOLD");
+    expect(ready().phase).toBe("READY");
+  });
+  it("delta > 18 = CORRECT once, delta < -18 = PASS once", () => {
+    const c = run(ready(), 19, 900);
+    expect(c.fire).toBe("correct");
+    expect(run(c.machine, 40, 950).fire).toBeNull();
+    expect(run(ready(), -19, 900).fire).toBe("pass");
+    expect(run(ready(), 18, 900).fire).toBeNull();
+  });
+  it("locks 1200ms then needs |delta|<8 for 600ms to re-arm; never fires on return", () => {
+    let m = run(ready(), 25, 1000).machine;
+    expect(run(m, -30, 2100).fire).toBeNull();
+    expect(run(m, -30, 2100).machine.phase).toBe("LOCKED");
+    let r = run(m, -30, 2200); // lock over, still tilted (return swing)
+    expect(r.fire).toBeNull();
+    expect(r.machine.phase).toBe("WAIT_FOR_RETURN");
+    m = run(r.machine, 2, 2300).machine;
+    expect(run(m, 2, 2899).machine.phase).toBe("WAIT_FOR_RETURN");
+    expect(run(m, 2, 2900).machine.phase).toBe("READY");
   });
 });
