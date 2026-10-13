@@ -192,10 +192,7 @@ function SoundItGame() {
 
   const quickUnlocked = isQuickCallUnlocked(prefs.gamesCompleted);
   const playMode = prefs.mode === "quick" && !quickUnlocked ? "mix" : prefs.mode;
-  const availableCards = useMemo(
-    () => buildPlayPool(playMode, categories),
-    [playMode, categories],
-  );
+  const availableCards = useMemo(() => buildPlayPool(playMode, categories), [playMode, categories]);
   const fire = phase === "play" && isFireMode(stats.streak);
   fireRef.current = fire;
   useWakeLock(phase !== "setup" && phase !== "final");
@@ -713,39 +710,39 @@ function SoundItGame() {
             className={`relative flex min-h-0 flex-1 gap-2 ${landscape ? "flex-row" : "flex-col"}`}
           >
             <div className="relative flex min-h-0 flex-1">
-            <div
-              aria-hidden
-              className="absolute inset-0 translate-y-2 scale-[0.96] rounded-[2.25rem] opacity-60"
-              style={{ backgroundColor: peekColor }}
-            />
-            <div
-              key={cardIndex}
-              className={`si-card-in relative flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.25rem] px-6 text-center shadow-2xl ${
-                exit === "got" ? "si-fly-down" : exit === "pass" ? "si-fly-up" : ""
-              }`}
-              style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
-            >
-              <span aria-hidden className="absolute left-5 top-4 text-4xl">
-                {card.icon}
-              </span>
-              {card.badge && (
-                <span
-                  className="mb-4 rounded-full px-5 py-2 text-sm font-black tracking-wide"
-                  style={{ backgroundColor: darkText ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)" }}
-                >
-                  {card.badge}
-                </span>
-              )}
-              <h2
-                className={`${promptSize(card.prompt, landscape)} font-black uppercase`}
-                style={{ fontFamily: "var(--font-display)" }}
+              <div
+                aria-hidden
+                className="absolute inset-0 translate-y-2 scale-[0.96] rounded-[2.25rem] opacity-60"
+                style={{ backgroundColor: peekColor }}
+              />
+              <div
+                key={cardIndex}
+                className={`si-card-in relative flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.25rem] px-6 text-center shadow-2xl ${
+                  exit === "got" ? "si-fly-down" : exit === "pass" ? "si-fly-up" : ""
+                }`}
+                style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
               >
-                {card.prompt}
-              </h2>
-              <span className="absolute bottom-4 left-0 right-0 text-center text-base font-black uppercase tracking-wider opacity-70">
-                {card.hint}
-              </span>
-            </div>
+                <span aria-hidden className="absolute left-5 top-4 text-4xl">
+                  {card.icon}
+                </span>
+                {card.badge && (
+                  <span
+                    className="mb-4 rounded-full px-5 py-2 text-sm font-black tracking-wide"
+                    style={{ backgroundColor: darkText ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)" }}
+                  >
+                    {card.badge}
+                  </span>
+                )}
+                <h2
+                  className={`${promptSize(card.prompt, landscape)} font-black uppercase`}
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {card.prompt}
+                </h2>
+                <span className="absolute bottom-4 left-0 right-0 text-center text-base font-black uppercase tracking-wider opacity-70">
+                  {card.hint}
+                </span>
+              </div>
             </div>
 
             {landscape ? (
@@ -880,7 +877,9 @@ function FinalScoreboard({
   const share = async () => {
     const text = shareText(totals);
     try {
-      const nav = navigator as Navigator & { share?: (d: { text: string; title?: string }) => Promise<void> };
+      const nav = navigator as Navigator & {
+        share?: (d: { text: string; title?: string }) => Promise<void>;
+      };
       if (typeof nav.share === "function") {
         await nav.share({ title: "Sound It! scores", text });
         return;

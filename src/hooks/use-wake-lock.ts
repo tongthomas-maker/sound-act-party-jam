@@ -8,9 +8,11 @@ interface WakeLockSentinelLike {
 export function useWakeLock(active: boolean) {
   useEffect(() => {
     if (!active || typeof navigator === "undefined") return;
-    const wl = (navigator as Navigator & {
-      wakeLock?: { request: (t: "screen") => Promise<WakeLockSentinelLike> };
-    }).wakeLock;
+    const wl = (
+      navigator as Navigator & {
+        wakeLock?: { request: (t: "screen") => Promise<WakeLockSentinelLike> };
+      }
+    ).wakeLock;
     if (!wl) return;
     let sentinel: WakeLockSentinelLike | null = null;
     let cancelled = false;

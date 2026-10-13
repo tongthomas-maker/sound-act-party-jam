@@ -1,12 +1,7 @@
 import { useState } from "react";
 import { CATEGORIES, type CategoryId } from "@/lib/cards";
 import type { Player } from "@/lib/players";
-import {
-  ROUND_COUNTS,
-  ROUND_LENGTHS,
-  MIN_PLAYERS,
-  QUICK_CALL_UNLOCK_GAMES,
-} from "@/lib/game";
+import { ROUND_COUNTS, ROUND_LENGTHS, MIN_PLAYERS, QUICK_CALL_UNLOCK_GAMES } from "@/lib/game";
 import type { PlayMode, Prefs } from "@/lib/prefs";
 
 export type Mode = PlayMode;

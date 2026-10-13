@@ -209,9 +209,7 @@ export function buzzer() {
 
 /** Win fanfare — loud C5-E5-G5-C6 arpeggio, ~1.5s total. */
 export function fanfare() {
-  [523, 659, 784, 1046].forEach((f, i) =>
-    tone(f, i === 3 ? 0.9 : 0.4, "triangle", 0.7, i * 0.2),
-  );
+  [523, 659, 784, 1046].forEach((f, i) => tone(f, i === 3 ? 0.9 : 0.4, "triangle", 0.7, i * 0.2));
 }
 
 /* ---------- Sound V2: light instrumental game bed ---------- */

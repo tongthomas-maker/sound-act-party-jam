@@ -109,7 +109,14 @@ describe("fire mode + recap + unlock", () => {
     expect(t[0]?.total).toBe(7);
   });
   it("confetti burst every 3rd streak", () => {
-    expect([1, 2, 3, 4, 5, 6].map(isStreakMilestone)).toEqual([false, false, true, false, false, true]);
+    expect([1, 2, 3, 4, 5, 6].map(isStreakMilestone)).toEqual([
+      false,
+      false,
+      true,
+      false,
+      false,
+      true,
+    ]);
   });
   it("recap splits lists and finds fastest correct", () => {
     const r = recap([
@@ -126,7 +133,13 @@ describe("fire mode + recap + unlock", () => {
     expect(isQuickCallUnlocked(3)).toBe(true);
   });
   it("share text lists ranks and scores", () => {
-    expect(shareText(aggregateScores([{ playerId: "a", name: "Ann", round: 1, correct: 4, passes: 0, bestStreak: 2 }]))).toContain("1. Ann — 4");
+    expect(
+      shareText(
+        aggregateScores([
+          { playerId: "a", name: "Ann", round: 1, correct: 4, passes: 0, bestStreak: 2 },
+        ]),
+      ),
+    ).toContain("1. Ann — 4");
   });
   it("gesture mapping unchanged: DOWN = GOT IT, UP = PASS", () => {
     expect(gestureToAction("down")).toBe("got");
