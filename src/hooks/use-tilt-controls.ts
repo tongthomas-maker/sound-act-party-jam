@@ -267,6 +267,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     toggleMotion,
     recalibrate,
     debug,
+    swapped,
+    toggleSwap,
     debugTilt: debug ? debug.delta : null,
   };
 }
