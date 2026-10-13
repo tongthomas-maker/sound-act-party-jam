@@ -254,7 +254,28 @@
 }
 
 
+@keyframes si-flash {
+  0% { opacity: 0.45; }
+  100% { opacity: 0; }
+}
+.si-flash { animation: si-flash 0.6s ease-out forwards; background-clip: padding-box; }
+.si-flash > .si-confetti { opacity: 1; }
+@keyframes si-confetti {
+  0% { transform: translate(-50%, -50%) scale(1) rotate(0); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0.6) rotate(540deg); opacity: 0; }
+}
+.si-confetti { animation: si-confetti 0.6s ease-out forwards; }
+@keyframes si-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-12px); }
+  40% { transform: translateX(10px); }
+  60% { transform: translateX(-8px); }
+  80% { transform: translateX(5px); }
+}
+.si-shake { animation: si-shake 0.35s ease-in-out; }
+
 @media (prefers-reduced-motion: reduce) {
+  .si-flash, .si-confetti, .si-shake,
   .si-flip-out,
   .si-slide-out,
   .si-card-in,
