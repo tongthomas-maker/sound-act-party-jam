@@ -12,16 +12,52 @@ interface Options {
   preferOn?: boolean;
 }
 
-/* ---- gesture tuning: flick velocity, single axis ---- */
-const FLICK_DPS = 120; // rotationRate spike that fires
-const LOW_DPS = 20; // "still" velocity
-const NEUTRAL_DEG = 10; // angle from baseline required for NEUTRAL
-const FALLBACK_DPS = 80; // orientation-derived speed fallback
-const FALLBACK_DEG = 15;
-const STILL_HOLD_MS = 800;
+/* ---- v15 gesture tuning: orientation angle only ---- */
+export const TRIGGER_DEG = 18;
+export const REARM_DEG = 8;
+export const LOCK_MS = 1200;
+export const HOLD_MS = 800;
+export const RETURN_MS = 600;
 const CALIBRATE_MS = 800;
+const CAL_HOLD_MS = 500;
 
-type TiltState = "ARMING" | "NEUTRAL" | "LOCKED" | "WAIT";
+export type TiltPhase = "HOLD" | "READY" | "LOCKED" | "WAIT_FOR_RETURN";
+export interface TiltMachine {
+  phase: TiltPhase;
+  /** HOLD/WAIT: when stillness began (0 = not still); LOCKED: when lock began. */
+  since: number | null;
+}
+export const initialTiltMachine = (): TiltMachine => ({ phase: "HOLD", since: null });
+
+/**
+ * Pure tilt state machine. `v` = signed delta from baseline, positive = DOWN.
+ * Fires at most once per READY -> LOCKED transition.
+ */
+export function stepTilt(
+  m: TiltMachine,
+  v: number,
+  now: number,
+): { machine: TiltMachine; fire: "correct" | "pass" | null } {
+  const near = Math.abs(v) < REARM_DEG;
+  switch (m.phase) {
+    case "HOLD":
+    case "WAIT_FOR_RETURN": {
+      const need = m.phase === "HOLD" ? HOLD_MS : RETURN_MS;
+      if (!near) return { machine: { phase: m.phase, since: null }, fire: null };
+      const since = m.since ?? now;
+      if (now - since >= need) return { machine: { phase: "READY", since: null }, fire: null };
+      return { machine: { phase: m.phase, since }, fire: null };
+    }
+    case "READY":
+      if (v > TRIGGER_DEG) return { machine: { phase: "LOCKED", since: now }, fire: "correct" };
+      if (v < -TRIGGER_DEG) return { machine: { phase: "LOCKED", since: now }, fire: "pass" };
+      return { machine: m, fire: null };
+    case "LOCKED":
+      if (now - (m.since ?? now) >= LOCK_MS)
+        return stepTilt({ phase: "WAIT_FOR_RETURN", since: null }, v, now);
+      return { machine: m, fire: null };
+  }
+}
 export type TiltDevice = "iPad" | "iPhone" | "other";
 
 export function detectDevice(ua: string): TiltDevice {
@@ -30,8 +66,8 @@ export function detectDevice(ua: string): TiltDevice {
 
 /** Per-device defaults: sign (+1 => delta>20 = CORRECT) and lock duration. */
 export function deviceTiltDefaults(device: TiltDevice): { sign: 1 | -1; lockMs: number } {
-  if (device === "iPhone") return { sign: -1, lockMs: 1500 };
-  return { sign: 1, lockMs: 1000 };
+  if (device === "iPhone") return { sign: -1, lockMs: LOCK_MS };
+  return { sign: 1, lockMs: LOCK_MS };
 }
 
 export const swapKey = (device: TiltDevice) => `tiltDir_${device}`;
@@ -46,6 +82,7 @@ interface TiltDebug {
   calibrating: boolean;
   locked: boolean;
   state: string;
+  device?: string;
 }
 
 interface OrientationCtor {
@@ -95,17 +132,17 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const lockedUntil = useRef(0);
   const lastDebugAt = useRef(0);
   const deviceRef = useRef<TiltDevice>("other");
-  const swapRef = useRef(1); // per-device user swap on top of device default sign
+  const dirRef = useRef<1 | -1>(1); // per-device CORRECT direction (tiltDir_<device>)
   const [swapped, setSwapped] = useState(false);
   const [calStep, setCalStep] = useState<"idle" | "armed">("idle");
   const calArmed = useRef(false);
   useEffect(() => {
     deviceRef.current = detectDevice(navigator.userAgent);
     try {
-      if (localStorage.getItem(swapKey(deviceRef.current)) === "1") {
-        swapRef.current = -1;
-        setSwapped(true);
-      }
+      const def = deviceTiltDefaults(deviceRef.current).sign;
+      const saved = localStorage.getItem(swapKey(deviceRef.current));
+      dirRef.current = saved === "1" ? 1 : saved === "-1" ? -1 : def;
+      setSwapped(dirRef.current !== def);
     } catch {
       /* ignore */
     }
@@ -191,85 +228,41 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     };
   }, [motionOn, recalibrate]);
 
-  /* ---- gesture detection: devicemotion rotationRate flick (fallback: orientation speed) ---- */
+  /* ---- v15 gesture detection: orientation angle only, single axis ---- */
   useEffect(() => {
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
     const landscape = isLandscape();
-    const { sign, lockMs } = deviceTiltDefaults(deviceRef.current);
     let calStart = 0,
       sum = 0,
       count = 0,
       baseline = 0,
       calibrated = false;
-    let angleDelta = 0,
-      lastAngle: number | null = null,
-      lastAngleAt = 0;
     let beta = 0,
-      gamma = 0;
-    let hasRate = false;
-    let state: TiltState = "ARMING";
-    let stillSince = 0;
-    let unlockTimer: ReturnType<typeof setTimeout> | undefined;
+      gamma = 0,
+      delta = 0,
+      lastRaw: number | null = null,
+      lastAt = 0,
+      flick = 0;
+    let m: TiltMachine = initialTiltMachine();
+    let calSince = 0,
+      calSign = 0;
 
-    const show = (vel: number) => {
-      const now = Date.now();
+    const show = (now: number) => {
       if (now - lastDebugAt.current < 100) return;
       lastDebugAt.current = now;
       setDebug({
         beta: Math.round(beta),
         gamma: Math.round(gamma),
         landscape,
-        delta: Math.round(angleDelta),
-        tiltDeg: Math.round(vel),
-        source: hasRate ? "motion" : "orient",
+        delta: Math.round(delta),
+        tiltDeg: Math.round(flick),
+        source: "orient",
         calibrating: !calibrated,
-        locked: state === "LOCKED",
-        state: `${state} ${deviceRef.current}`,
+        locked: m.phase === "LOCKED",
+        state: calibrated ? m.phase : "CALIBRATING",
+        device: deviceRef.current,
       });
-    };
-
-    const handle = (vel: number, fallback: boolean) => {
-      const now = Date.now();
-      if (!calibrated || now < lockedUntil.current) return;
-      show(vel);
-      const absV = Math.abs(vel);
-      if (state === "LOCKED") return;
-      if (state === "WAIT" || state === "ARMING") {
-        // never fires here — waits for sustained stillness near center
-        const still = absV < LOW_DPS && Math.abs(angleDelta) < NEUTRAL_DEG;
-        if (still) {
-          if (!stillSince) stillSince = now;
-          else if (now - stillSince >= STILL_HOLD_MS) {
-            state = "NEUTRAL";
-            stillSince = 0;
-          }
-        } else stillSince = 0;
-        return;
-      }
-      // NEUTRAL: fire only on a velocity spike
-      const spike = fallback
-        ? absV > FALLBACK_DPS && Math.abs(angleDelta) > FALLBACK_DEG
-        : absV > FLICK_DPS;
-      if (!spike) return;
-      if (calArmed.current) {
-        // record this flick as CORRECT for this device
-        calArmed.current = false;
-        setCalStep("idle");
-        swapRef.current = Math.sign(vel) * sign > 0 ? 1 : -1;
-        persistSwap();
-        state = "WAIT";
-        return;
-      }
-      const v = vel * sign * swapRef.current; // positive = DOWN = CORRECT
-      state = "LOCKED";
-      if (v > 0)
-        cbs.current.onDown(); // DOWN = GOT IT!
-      else cbs.current.onUp(); // UP = PASS
-      unlockTimer = setTimeout(() => {
-        state = "WAIT";
-        stillSince = 0;
-      }, lockMs);
     };
 
     const onOrient = (e: DeviceOrientationEvent) => {
@@ -277,54 +270,64 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       beta = e.beta ?? 0;
       gamma = e.gamma ?? 0;
       const raw = landscape ? gamma : beta; // single axis, never switch
+      if (lastRaw !== null && now > lastAt) flick = ((raw - lastRaw) * 1000) / (now - lastAt);
+      lastRaw = raw;
+      lastAt = now;
       if (!calibrated) {
         if (!calStart) calStart = now;
         sum += raw;
         count++;
         baseline = sum / count;
         if (now - calStart >= CALIBRATE_MS) calibrated = true;
-        lastAngle = raw;
-        lastAngleAt = now;
+        show(now);
         return;
       }
-      angleDelta = raw - baseline;
-      if (!hasRate && lastAngle !== null && now > lastAngleAt) {
-        const speed = ((raw - lastAngle) * 1000) / (now - lastAngleAt);
-        handle(speed, true);
+      delta = raw - baseline;
+      show(now);
+      if (now < lockedUntil.current) return;
+
+      if (calArmed.current) {
+        // AUTO CALIBRATE: hold DOWN past trigger for 500ms -> that side = CORRECT
+        const s = Math.abs(delta) > TRIGGER_DEG ? Math.sign(delta) : 0;
+        if (s && s === calSign) {
+          if (now - calSince >= CAL_HOLD_MS) {
+            calArmed.current = false;
+            setCalStep("idle");
+            dirRef.current = s as 1 | -1;
+            persistDir();
+            m = { phase: "LOCKED", since: now };
+          }
+        } else {
+          calSign = s;
+          calSince = now;
+        }
+        return;
       }
-      lastAngle = raw;
-      lastAngleAt = now;
-    };
-    const onMotion = (e: DeviceMotionEvent) => {
-      const r = e.rotationRate;
-      const vel = r ? (landscape ? r.gamma : r.beta) : null;
-      if (vel == null) return;
-      hasRate = true;
-      handle(vel, false);
+
+      const r = stepTilt(m, delta * dirRef.current, now);
+      m = r.machine;
+      if (r.fire === "correct") cbs.current.onDown(); // DOWN = GOT IT!
+      else if (r.fire === "pass") cbs.current.onUp(); // UP = PASS
     };
 
     window.addEventListener("deviceorientation", onOrient);
-    window.addEventListener("devicemotion", onMotion);
-    return () => {
-      window.removeEventListener("deviceorientation", onOrient);
-      window.removeEventListener("devicemotion", onMotion);
-      if (unlockTimer) clearTimeout(unlockTimer);
-    };
+    return () => window.removeEventListener("deviceorientation", onOrient);
   }, [enabled, motionOn, permission, recalibrate]);
 
-  const persistSwap = () => {
-    setSwapped(swapRef.current === -1);
+  const persistDir = () => {
+    const def = deviceTiltDefaults(deviceRef.current).sign;
+    setSwapped(dirRef.current !== def);
     try {
-      localStorage.setItem(swapKey(deviceRef.current), swapRef.current === -1 ? "1" : "0");
+      localStorage.setItem(swapKey(deviceRef.current), String(dirRef.current));
     } catch {
       /* ignore */
     }
   };
   const toggleSwap = useCallback(() => {
-    swapRef.current *= -1;
-    persistSwap();
+    dirRef.current = dirRef.current === 1 ? -1 : 1;
+    persistDir();
   }, []);
-  /** Arm: the next flick is recorded as CORRECT for this device. */
+  /** Arm: hold the phone DOWN for 500ms to record that side as CORRECT. */
   const autoCalibrate = useCallback(() => {
     calArmed.current = !calArmed.current;
     setCalStep(calArmed.current ? "armed" : "idle");
