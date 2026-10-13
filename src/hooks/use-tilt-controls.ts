@@ -48,14 +48,6 @@ function motionCtor(): MotionCtor | undefined {
   return (window as unknown as { DeviceMotionEvent?: MotionCtor }).DeviceMotionEvent;
 }
 
-function screenAngle(): number {
-  if (typeof window === "undefined") return 0;
-  const a = window.screen?.orientation?.angle;
-  if (typeof a === "number") return a;
-  const legacy = (window as unknown as { orientation?: number }).orientation;
-  return typeof legacy === "number" ? legacy : 0;
-}
-
 /**
  * Project beta (front-back tilt) and gamma (left-right tilt) onto the axis that
  * is physically "up/down" for how the screen is currently rotated.
@@ -85,7 +77,6 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   // gesture state
   const armed = useRef(true);
   const lockedUntil = useRef(0);
-  const angleRef = useRef(0);
   const lastDebugAt = useRef(0);
   const swapRef = useRef(1);
   const [swapped, setSwapped] = useState(false);
