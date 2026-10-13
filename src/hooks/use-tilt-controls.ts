@@ -12,10 +12,13 @@ interface Options {
 }
 
 /* ---- gesture tuning (fixed thresholds) ---- */
-const TRIGGER_DEG = 22; // |delta| past this fires
-const REARM_DEG = 12; // return within this to re-arm (instant, no dwell)
-const LOCK_MS = 700; // ignore all orientation after a trigger
+const TRIGGER_DEG = 24; // |delta| past this fires
+const DEADZONE_DEG = 14; // must be inside this to be NEUTRAL/armed
+const REARM_DEG = 12; // WAIT_NEUTRAL: |delta| under this…
+const REARM_DWELL_MS = 250; // …held this long re-arms
+const LOCK_MS = 1000; // ignore all orientation after a trigger
 const CALIBRATE_MS = 800; // average this long to find the neutral baseline
+const THROTTLE_MS = 80; // min time between processed orientation events
 
 type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
@@ -43,14 +46,6 @@ function orientationCtor(): OrientationCtor | undefined {
 function motionCtor(): MotionCtor | undefined {
   if (typeof window === "undefined") return undefined;
   return (window as unknown as { DeviceMotionEvent?: MotionCtor }).DeviceMotionEvent;
-}
-
-function screenAngle(): number {
-  if (typeof window === "undefined") return 0;
-  const a = window.screen?.orientation?.angle;
-  if (typeof a === "number") return a;
-  const legacy = (window as unknown as { orientation?: number }).orientation;
-  return typeof legacy === "number" ? legacy : 0;
 }
 
 /**
@@ -82,7 +77,6 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   // gesture state
   const armed = useRef(true);
   const lockedUntil = useRef(0);
-  const angleRef = useRef(0);
   const lastDebugAt = useRef(0);
   const swapRef = useRef(1);
   const [swapped, setSwapped] = useState(false);
@@ -162,14 +156,12 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     if (permission === "granted") setMotionOn(true);
   }, [motionOn, permission, requestPermission]);
 
-  /* ---- screen orientation changes invalidate arming ---- */
+  /* ---- screen rotation: recalibrate, never let the rotation itself fire ---- */
   useEffect(() => {
     if (!motionOn) return;
-    angleRef.current = screenAngle();
     const onChange = () => {
-      angleRef.current = screenAngle();
       recalibrate();
-      lockedUntil.current = Date.now() + 600; // never let the rotation itself fire
+      lockedUntil.current = Date.now() + 600;
     };
     window.addEventListener("orientationchange", onChange);
     window.screen?.orientation?.addEventListener?.("change", onChange);
@@ -179,41 +171,43 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     };
   }, [motionOn, recalibrate]);
 
-  /* ---- orientation: primary gesture detection ---- */
+  /* ---- orientation: single-axis gesture detection ---- */
   useEffect(() => {
     if (!enabled || !motionOn || permission !== "granted") {
       recalibrate();
       return;
     }
     recalibrate();
+    // Pick ONE axis at start and never switch: gamma in landscape, beta in portrait.
+    const landscape = isLandscape();
     const startedAt = Date.now();
-    let bSum = 0;
-    let gSum = 0;
+    let sum = 0;
     let count = 0;
-    let baseB = 0;
-    let baseG = 0;
+    let baseline = 0;
     let calibrated = false;
     let state: TiltState = "NEUTRAL";
+    let lastEventAt = 0;
+    let neutralSince = 0;
     let unlockTimer: ReturnType<typeof setTimeout> | undefined;
 
     const handler = (e: DeviceOrientationEvent) => {
+      const now = Date.now();
+      if (now - lastEventAt < THROTTLE_MS) return; // throttle to ~12.5Hz
+      lastEventAt = now;
+      const raw = (landscape ? e.gamma : e.beta) ?? 0;
       const beta = e.beta ?? 0;
       const gamma = e.gamma ?? 0;
-      const now = Date.now();
+
       if (!calibrated) {
-        bSum += beta;
-        gSum += gamma;
+        sum += raw;
         count++;
-        baseB = bSum / count;
-        baseG = gSum / count;
+        baseline = sum / count;
         if (now - startedAt < CALIBRATE_MS) return;
         calibrated = true;
       }
       if (now < lockedUntil.current && state !== "LOCKED") return; // rotation guard
-      const dB = beta - baseB;
-      const dG = gamma - baseG;
-      const useG = Math.abs(dG) > Math.abs(dB);
-      const delta = (useG ? dG : dB) * swapRef.current;
+
+      const delta = (raw - baseline) * swapRef.current;
       const abs = Math.abs(delta);
 
       if (now - lastDebugAt.current >= 100) {
@@ -221,7 +215,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
         setDebug({
           beta: Math.round(beta),
           gamma: Math.round(gamma),
-          landscape: useG,
+          landscape,
           delta: Math.round(delta),
           calibrating: false,
           locked: state === "LOCKED",
@@ -229,18 +223,33 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
         });
       }
 
-      if (state === "LOCKED") return;
-      if (state === "WAIT_NEUTRAL") {
-        if (abs < REARM_DEG) state = "NEUTRAL"; // instant re-arm
-        return;
+      switch (state) {
+        case "LOCKED":
+          return; // hard lock: ignore everything
+        case "WAIT_NEUTRAL":
+          if (abs < REARM_DEG) {
+            if (!neutralSince) neutralSince = now;
+            else if (now - neutralSince >= REARM_DWELL_MS) {
+              state = "NEUTRAL";
+              neutralSince = 0;
+            }
+          } else {
+            neutralSince = 0;
+          }
+          return;
+        case "NEUTRAL":
+          if (abs < DEADZONE_DEG) return; // still neutral, stay armed
+          if (abs < TRIGGER_DEG) return; // between deadzone and trigger: wait
+          // fire exactly once, then lock
+          state = "LOCKED";
+          neutralSince = 0;
+          if (delta < 0) cbs.current.onDown(); // DOWN = GOT IT!
+          else cbs.current.onUp(); // UP = PASS
+          unlockTimer = setTimeout(() => {
+            state = "WAIT_NEUTRAL";
+          }, LOCK_MS);
+          return;
       }
-      if (abs < TRIGGER_DEG) return;
-      state = "LOCKED";
-      if (delta < 0) cbs.current.onDown(); // DOWN = GOT IT!
-      else cbs.current.onUp(); // UP = PASS
-      unlockTimer = setTimeout(() => {
-        state = "WAIT_NEUTRAL";
-      }, LOCK_MS);
     };
 
     window.addEventListener("deviceorientation", handler);
