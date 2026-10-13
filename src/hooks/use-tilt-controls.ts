@@ -13,15 +13,15 @@ interface Options {
 }
 
 /* ---- gesture tuning ---- */
-const M_TRIGGER = 3.5; // m/s² on gravity Y (~20°)
-const M_REARM = 1.5; // m/s² neutral band
+const M_TRIGGER = 3.4; // m/s² on gravity Y (~20°)
+const M_REARM = 1.7; // m/s² neutral band (~10°)
 const TRIGGER_DEG = 20; // orientation fallback
 const REARM_DEG = 10; // orientation fallback neutral band
 const NEUTRAL_HOLD_MS = 400; // WAIT_NEUTRAL dwell before re-arming
 const OPPOSITE_BLOCK_MS = 500; // after re-arm, opposite gesture blocked this long
-const LOCK_MS = 1200; // ignore everything after a trigger
+const LOCK_MS = 1000; // ignore everything after a trigger
 const CALIBRATE_MS = 800; // baseline averaging window
-const THROTTLE_MS = 100; // min time between processed events
+const THROTTLE_MS = 80; // min time between processed events
 
 type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
 
