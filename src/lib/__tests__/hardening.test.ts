@@ -144,3 +144,17 @@ describe("orientation-aware tilt axis", () => {
     expect(tiltForOrientation(30, 20, -90)).toBe(20);
   });
 });
+
+import { detectDevice, deviceTiltDefaults, swapKey } from "../../hooks/use-tilt-controls";
+describe("per-device tilt defaults", () => {
+  it("detects iPad/iPhone/other and stores swap per device", () => {
+    expect(detectDevice("Mozilla (iPad; CPU OS 17)")).toBe("iPad");
+    expect(detectDevice("Mozilla (iPhone; CPU iPhone OS 17)")).toBe("iPhone");
+    expect(detectDevice("Android")).toBe("other");
+    expect(swapKey("iPhone")).toBe("tiltSwap_iPhone");
+  });
+  it("iPhone is inverted with 1500ms lock; iPad normal with 1000ms", () => {
+    expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 1500 });
+    expect(deviceTiltDefaults("iPad")).toEqual({ sign: 1, lockMs: 1000 });
+  });
+});

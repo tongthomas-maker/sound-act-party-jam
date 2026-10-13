@@ -12,18 +12,29 @@ interface Options {
   preferOn?: boolean;
 }
 
-/* ---- gesture tuning ---- */
-const M_TRIGGER = 3.4; // m/s² on gravity Y (~20°)
-const M_REARM = 1.7; // m/s² neutral band (~10°)
-const TRIGGER_DEG = 20; // orientation fallback
-const REARM_DEG = 10; // orientation fallback neutral band
-const NEUTRAL_HOLD_MS = 400; // WAIT_NEUTRAL dwell before re-arming
-const OPPOSITE_BLOCK_MS = 500; // after re-arm, opposite gesture blocked this long
-const LOCK_MS = 1000; // ignore everything after a trigger
-const CALIBRATE_MS = 800; // baseline averaging window
-const THROTTLE_MS = 80; // min time between processed events
+/* ---- gesture tuning (degrees, single axis) ---- */
+const TRIGGER_DEG = 20;
+const NEUTRAL_DEG = 10; // must be within this to fire from NEUTRAL
+const REARM_DEG = 8; // WAIT_NEUTRAL band
+const NEUTRAL_HOLD_MS = 600;
+const OPPOSITE_BLOCK_MS = 1500;
+const CALIBRATE_MS = 800;
+const THROTTLE_MS = 80;
 
-type TiltState = "NEUTRAL" | "TRIGGERED" | "LOCKED" | "WAIT_NEUTRAL";
+type TiltState = "NEUTRAL" | "LOCKED" | "WAIT_NEUTRAL";
+export type TiltDevice = "iPad" | "iPhone" | "other";
+
+export function detectDevice(ua: string): TiltDevice {
+  return /iPad/.test(ua) ? "iPad" : /iPhone/.test(ua) ? "iPhone" : "other";
+}
+
+/** Per-device defaults: sign (+1 => delta>20 = CORRECT) and lock duration. */
+export function deviceTiltDefaults(device: TiltDevice): { sign: 1 | -1; lockMs: number } {
+  if (device === "iPhone") return { sign: -1, lockMs: 1500 };
+  return { sign: 1, lockMs: 1000 };
+}
+
+export const swapKey = (device: TiltDevice) => `tiltSwap_${device}`;
 
 interface TiltDebug {
   beta: number;
@@ -83,11 +94,15 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const armed = useRef(true);
   const lockedUntil = useRef(0);
   const lastDebugAt = useRef(0);
-  const swapRef = useRef(1);
+  const deviceRef = useRef<TiltDevice>("other");
+  const swapRef = useRef(1); // per-device user swap on top of device default sign
   const [swapped, setSwapped] = useState(false);
+  const [calStep, setCalStep] = useState<"idle" | "down" | "up">("idle");
+  const calDown = useRef(0);
   useEffect(() => {
+    deviceRef.current = detectDevice(navigator.userAgent);
     try {
-      if (localStorage.getItem("tiltSwap") === "1") {
+      if (localStorage.getItem(swapKey(deviceRef.current)) === "1") {
         swapRef.current = -1;
         setSwapped(true);
       }
@@ -176,17 +191,13 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     };
   }, [motionOn, recalibrate]);
 
-  /* ---- gesture detection: devicemotion gravity Y (fallback: orientation gamma/beta) ---- */
-  const lastRawDelta = useRef(0); // unswapped delta, for "Set DOWN as CORRECT"
+  /* ---- gesture detection: deviceorientation, single axis chosen once ---- */
+  const lastRawDelta = useRef(0);
   useEffect(() => {
-    if (!enabled || !motionOn || permission !== "granted") {
-      recalibrate();
-      return;
-    }
     recalibrate();
+    if (!enabled || !motionOn || permission !== "granted") return;
     const landscape = isLandscape();
-    let source: "motion" | "orientation" | null = null;
-    const startedAt = Date.now();
+    const { sign, lockMs } = deviceTiltDefaults(deviceRef.current);
     let calStart = 0;
     let sum = 0;
     let count = 0;
@@ -195,17 +206,18 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     let state: TiltState = "NEUTRAL";
     let lastEventAt = 0;
     let neutralSince = 0;
-    let neutralAt = 0; // when we last re-armed
     let lastAction: "down" | "up" | null = null;
-    let prevDelta = 0; // last processed delta, for crossing detection
+    let lastActionAt = 0;
+    let prevAbs = 0;
     let unlockTimer: ReturnType<typeof setTimeout> | undefined;
 
-    const process = (raw: number, tiltDeg: number, beta: number, gamma: number, unit: "m" | "d") => {
+    const onOrient = (e: DeviceOrientationEvent) => {
       const now = Date.now();
       if (now - lastEventAt < THROTTLE_MS) return;
       lastEventAt = now;
-      const trigger = unit === "m" ? M_TRIGGER : TRIGGER_DEG;
-      const rearm = unit === "m" ? M_REARM : REARM_DEG;
+      const beta = e.beta ?? 0;
+      const gamma = e.gamma ?? 0;
+      const raw = landscape ? gamma : beta; // never switch axes
       if (!calibrated) {
         if (!calStart) calStart = now;
         sum += raw;
@@ -213,15 +225,14 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
         baseline = sum / count;
         if (now - calStart < CALIBRATE_MS) return;
         calibrated = true;
-        neutralAt = now;
       }
-      if (now < lockedUntil.current && state !== "LOCKED") return; // rotation guard
+      if (now < lockedUntil.current) return; // rotation guard
       const rawDelta = raw - baseline;
       lastRawDelta.current = rawDelta;
-      const delta = rawDelta * swapRef.current;
+      const delta = rawDelta * sign * swapRef.current; // positive = DOWN = CORRECT
       const abs = Math.abs(delta);
-      const crossed = Math.abs(prevDelta) < trigger && abs >= trigger; // away-from-center crossing
-      prevDelta = delta;
+      const wasNeutral = prevAbs < NEUTRAL_DEG;
+      prevAbs = abs;
 
       if (now - lastDebugAt.current >= 100) {
         lastDebugAt.current = now;
@@ -230,73 +241,44 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
           gamma: Math.round(gamma),
           landscape,
           delta: Math.round(delta * 10) / 10,
-          tiltDeg: Math.round(tiltDeg),
-          source: unit === "m" ? "motion" : "orient",
+          tiltDeg: Math.round(raw),
+          source: "orient",
           calibrating: false,
           locked: state === "LOCKED",
-          state,
+          state: `${state} ${deviceRef.current}`,
         });
       }
 
-      switch (state) {
-        case "LOCKED":
-          return;
-        case "WAIT_NEUTRAL":
-          if (abs < rearm) {
-            if (!neutralSince) neutralSince = now;
-            else if (now - neutralSince >= NEUTRAL_HOLD_MS) {
-              state = "NEUTRAL";
-              neutralSince = 0;
-              neutralAt = now;
-            }
-          } else neutralSince = 0;
-          return;
-        case "NEUTRAL": {
-          // fire only on a fresh crossing away from center — never on return
-          if (!crossed) return;
-          const kind = delta > 0 ? "down" : "up"; // DOWN positive = CORRECT
-          // block the opposite gesture until neutral + 500ms (bounce-back guard)
-          if (lastAction && kind !== lastAction && now - neutralAt < OPPOSITE_BLOCK_MS) return;
-          state = "LOCKED";
-          neutralSince = 0;
-          lastAction = kind;
-          if (kind === "down") cbs.current.onDown(); // DOWN = GOT IT!
-          else cbs.current.onUp(); // UP = PASS
-          unlockTimer = setTimeout(() => {
-            state = "WAIT_NEUTRAL";
-          }, LOCK_MS);
-          return;
-        }
+      if (state === "LOCKED") return;
+      if (state === "WAIT_NEUTRAL") {
+        // never fires here — only re-arms
+        if (abs < REARM_DEG) {
+          if (!neutralSince) neutralSince = now;
+          else if (now - neutralSince >= NEUTRAL_HOLD_MS) {
+            state = "NEUTRAL";
+            neutralSince = 0;
+          }
+        } else neutralSince = 0;
+        return;
       }
+      // NEUTRAL: fire only on a crossing from the neutral band past the trigger
+      if (!wasNeutral || abs < TRIGGER_DEG) return;
+      const kind = delta > 0 ? "down" : "up";
+      if (lastAction && kind !== lastAction && now - lastActionAt < OPPOSITE_BLOCK_MS) return;
+      state = "LOCKED";
+      lastAction = kind;
+      lastActionAt = now;
+      if (kind === "down") cbs.current.onDown(); // DOWN = GOT IT!
+      else cbs.current.onUp(); // UP = PASS
+      unlockTimer = setTimeout(() => {
+        state = "WAIT_NEUTRAL";
+        neutralSince = 0;
+      }, lockMs);
     };
 
-    const onMotion = (e: DeviceMotionEvent) => {
-      const g = e.accelerationIncludingGravity;
-      if (!g || g.y == null || g.z == null) return;
-      if (source === "orientation") return;
-      source = "motion";
-      const gy = g.y;
-      const gz = g.z;
-      process(gy, (Math.atan2(gy, gz) * 180) / Math.PI, 0, 0, "m");
-    };
-    const onOrient = (e: DeviceOrientationEvent) => {
-      if (source !== "orientation") return;
-      const raw = (landscape ? e.gamma : e.beta) ?? 0;
-      process(raw, raw, e.beta ?? 0, e.gamma ?? 0, "d");
-    };
-    // fall back to orientation if no usable motion data shows up within 1s
-    const fallbackTimer = setTimeout(() => {
-      if (source === null && Date.now() - startedAt >= 1000) {
-        source = "orientation";
-        window.addEventListener("deviceorientation", onOrient);
-      }
-    }, 1000);
-
-    window.addEventListener("devicemotion", onMotion);
+    window.addEventListener("deviceorientation", onOrient);
     return () => {
-      window.removeEventListener("devicemotion", onMotion);
       window.removeEventListener("deviceorientation", onOrient);
-      clearTimeout(fallbackTimer);
       if (unlockTimer) clearTimeout(unlockTimer);
     };
   }, [enabled, motionOn, permission, recalibrate]);
@@ -304,7 +286,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const persistSwap = () => {
     setSwapped(swapRef.current === -1);
     try {
-      localStorage.setItem("tiltSwap", swapRef.current === -1 ? "1" : "0");
+      localStorage.setItem(swapKey(deviceRef.current), swapRef.current === -1 ? "1" : "0");
     } catch {
       /* ignore */
     }
@@ -313,14 +295,23 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     swapRef.current *= -1;
     persistSwap();
   }, []);
-  /** Player holds the phone tilted DOWN and taps: make that direction = GOT IT!. */
-  const setDownAsCorrect = useCallback(() => {
+  /** Two taps: hold DOWN + tap, then hold UP + tap. Sets this device's swap. */
+  const autoCalibrate = useCallback(() => {
     const d = lastRawDelta.current;
-    if (Math.abs(d) < 0.5) return false;
-    swapRef.current = d > 0 ? 1 : -1; // make current tilt direction read as positive = DOWN = CORRECT
+    if (calStep !== "down") {
+      calDown.current = d;
+      setCalStep("down");
+      return "need-up" as const;
+    }
+    setCalStep("idle");
+    const diff = calDown.current - d; // down minus up
+    if (Math.abs(diff) < 5) return "failed" as const;
+    const { sign } = deviceTiltDefaults(deviceRef.current);
+    // want (down raw) * sign * swap > 0
+    swapRef.current = Math.sign(diff) * sign > 0 ? 1 : -1;
     persistSwap();
-    return true;
-  }, []);
+    return "done" as const;
+  }, [calStep]);
 
   return {
     supported: permission !== "unsupported",
@@ -331,7 +322,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     debug,
     swapped,
     toggleSwap,
-    setDownAsCorrect,
+    autoCalibrate,
+    calStep,
     debugTilt: debug ? debug.delta : null,
   };
 }
