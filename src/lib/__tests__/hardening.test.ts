@@ -153,9 +153,9 @@ describe("per-device tilt defaults", () => {
     expect(detectDevice("Android")).toBe("other");
     expect(swapKey("iPhone")).toBe("tiltDir_iPhone");
   });
-  it("iPhone defaults to -1, iPad +1, both lock 1200ms", () => {
-    expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 1200 });
-    expect(deviceTiltDefaults("iPad")).toEqual({ sign: 1, lockMs: 1200 });
+  it("iPhone defaults to -1, iPad +1, both lock 600ms", () => {
+    expect(deviceTiltDefaults("iPhone")).toEqual({ sign: -1, lockMs: 600 });
+    expect(deviceTiltDefaults("iPad")).toEqual({ sign: 1, lockMs: 600 });
   });
 });
 
