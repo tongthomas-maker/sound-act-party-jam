@@ -347,7 +347,7 @@ export function SetupScreen({
             [
               ["🎵 Music", "music"],
               ["🔊 Effects", "sfx"],
-              ["📳 Haptics", "haptics"],
+              ["📳 Vibration", "haptics"],
               ["📱 Flip controls", "flip"],
             ] as const
           ).map(([label, key]) => (
@@ -364,6 +364,22 @@ export function SetupScreen({
             </button>
           ))}
         </div>
+        <label className="mt-3 block rounded-2xl bg-white/8 px-4 py-3">
+          <span className="flex justify-between text-xs font-black text-white/70">
+            <span>🔈 Volume</span>
+            <span>{prefs.volume}%</span>
+          </span>
+          <input
+            type="range"
+            min={0}
+            max={100}
+            step={5}
+            value={prefs.volume}
+            aria-label="Volume"
+            onChange={(e) => setPrefs({ volume: Number(e.target.value) })}
+            className="mt-2 w-full accent-card-yellow"
+          />
+        </label>
       </section>
 
       <div className="mt-auto pt-2">
