@@ -721,16 +721,16 @@ function SoundItGame() {
                 aria-pressed={tilt.swapped}
                 className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
               >
-                ⇅ {tilt.swapped ? "Swapped" : "Swap tilt"}
+                ⇅ {tilt.swapped ? "Swapped (this device)" : "SWAP FOR THIS DEVICE"}
               </button>
             )}
             {tilt.motionOn && (
               <button
                 type="button"
-                onClick={() => tilt.setDownAsCorrect()}
+                onClick={() => tilt.autoCalibrate()}
                 className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
               >
-                Set DOWN as CORRECT
+                {tilt.calStep === "down" ? "Now hold UP + tap" : "AUTO CALIBRATE (hold DOWN + tap)"}
               </button>
             )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
