@@ -220,6 +220,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       lastRawDelta.current = rawDelta;
       const delta = rawDelta * swapRef.current;
       const abs = Math.abs(delta);
+      const crossed = Math.abs(prevDelta) < trigger && abs >= trigger; // away-from-center crossing
+      prevDelta = delta;
 
       if (now - lastDebugAt.current >= 100) {
         lastDebugAt.current = now;
