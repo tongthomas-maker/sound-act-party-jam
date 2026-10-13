@@ -12,9 +12,20 @@ interface Options {
 }
 
 /* ---- gesture tuning (fixed thresholds) ---- */
-const TRIGGER_DEG = 35; // |tilt| beyond this fires a gesture
-const DEADZONE_DEG = 10; // -10..10 is neutral; must return here to re-arm
-const LOCK_MS = 1000; // ignore all orientation events for 1s after a trigger
+const TRIGGER_DEG = 35; // portrait: |beta delta| beyond this fires
+const LANDSCAPE_TRIGGER_DEG = 30; // landscape: |gamma delta| beyond this fires
+const DEADZONE_DEG = 10; // within ±10 of baseline is neutral; must return to re-arm
+const LOCK_MS = 1200; // ignore all orientation events after a trigger
+const CALIBRATE_MS = 1000; // average this long to find the neutral baseline
+
+interface TiltDebug {
+  beta: number;
+  gamma: number;
+  landscape: boolean;
+  delta: number;
+  calibrating: boolean;
+  locked: boolean;
+}
 
 interface OrientationCtor {
   requestPermission?: () => Promise<"granted" | "denied">;
@@ -61,7 +72,7 @@ export function tiltForOrientation(beta: number, gamma: number, angle: number): 
 export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Options) {
   const [permission, setPermission] = useState<Permission>("unsupported");
   const [motionOn, setMotionOn] = useState(false);
-  const [debugTilt, setDebugTilt] = useState<number | null>(null);
+  const [debug, setDebug] = useState<TiltDebug | null>(null);
 
   const cbs = useRef({ onUp, onDown });
   cbs.current = { onUp, onDown };
@@ -155,36 +166,58 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     }
     recalibrate();
     angleRef.current = screenAngle();
+    const startedAt = Date.now();
+    let baseline: number | null = null;
+    let samples: number[] = [];
+    let wasLandscape = isLandscape();
 
     const handler = (e: DeviceOrientationEvent) => {
       const beta = e.beta;
       const gamma = e.gamma;
-      if (beta === null || beta === undefined || gamma === null || gamma === undefined) return;
-
+      if (beta == null || gamma == null) return;
       const now = Date.now();
-      const tilt = tiltForOrientation(beta, gamma, angleRef.current);
+      const landscape = isLandscape();
+      if (landscape !== wasLandscape) {
+        wasLandscape = landscape;
+        baseline = null;
+        samples = [];
+        lockedUntil.current = now + 600;
+      }
+      const raw = landscape ? gamma : beta;
+      const calibrating = baseline === null;
+      if (calibrating) {
+        samples.push(raw);
+        if (now - startedAt >= CALIBRATE_MS || samples.length > 60) {
+          baseline = samples.reduce((a, b) => a + b, 0) / samples.length;
+        }
+      }
+      const delta = baseline === null ? 0 : raw - baseline;
+      const locked = now < lockedUntil.current;
 
-      // debug display (throttled to ~10fps to avoid re-render churn)
       if (now - lastDebugAt.current > 100) {
         lastDebugAt.current = now;
-        setDebugTilt(Math.round(tilt));
+        setDebug({
+          beta: Math.round(beta),
+          gamma: Math.round(gamma),
+          landscape,
+          delta: Math.round(delta),
+          calibrating: baseline === null,
+          locked,
+        });
       }
 
-      // hard lock: ignore every event for LOCK_MS after a trigger
-      if (now < lockedUntil.current) return;
-
-      // re-arm only once back inside the deadzone
+      if (baseline === null || locked) return;
+      const trigger = landscape ? LANDSCAPE_TRIGGER_DEG : TRIGGER_DEG;
       if (!armed.current) {
-        if (Math.abs(tilt) < DEADZONE_DEG) armed.current = true;
+        if (Math.abs(delta) < DEADZONE_DEG) armed.current = true;
         return;
       }
-
-      // tilt < -35 = down (GOT IT!), tilt > 35 = up (PASS)
-      if (tilt <= -TRIGGER_DEG) {
+      // negative = down (GOT IT!), positive = up (PASS)
+      if (delta <= -trigger) {
         armed.current = false;
         lockedUntil.current = now + LOCK_MS;
         cbs.current.onDown();
-      } else if (tilt >= TRIGGER_DEG) {
+      } else if (delta >= trigger) {
         armed.current = false;
         lockedUntil.current = now + LOCK_MS;
         cbs.current.onUp();
@@ -201,6 +234,16 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     motionOn,
     toggleMotion,
     recalibrate,
-    debugTilt,
+    debug,
+    debugTilt: debug ? debug.delta : null,
   };
+}
+
+function isLandscape(): boolean {
+  if (typeof window === "undefined") return false;
+  const legacy = (window as unknown as { orientation?: number }).orientation;
+  if (legacy === 90 || legacy === -90) return true;
+  const a = window.screen?.orientation?.angle;
+  if (a === 90 || a === 270) return true;
+  return window.innerWidth > window.innerHeight;
 }
