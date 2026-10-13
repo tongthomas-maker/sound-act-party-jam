@@ -29,6 +29,7 @@ interface TiltDebug {
   delta: number;
   calibrating: boolean;
   locked: boolean;
+  state: string;
 }
 
 interface OrientationCtor {

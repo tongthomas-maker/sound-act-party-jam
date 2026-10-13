@@ -708,7 +708,7 @@ function SoundItGame() {
               >
                 β {tilt.debug.beta}° γ {tilt.debug.gamma}° {tilt.debug.landscape ? "L" : "P"}
                 {tilt.debug.calibrating ? " cal…" : ` Δ${tilt.debug.delta}°`}
-                {tilt.debug.locked ? " 🔒" : ""}
+                {` ${tilt.debug.state}`}
               </span>
             )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
