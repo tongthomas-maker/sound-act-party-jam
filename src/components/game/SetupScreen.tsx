@@ -1,17 +1,27 @@
 import { useState } from "react";
 import { CATEGORIES, type CategoryId } from "@/lib/cards";
 import type { Player } from "@/lib/players";
-import { ROUND_COUNTS, ROUND_LENGTHS, MIN_PLAYERS } from "@/lib/game";
+import {
+  ROUND_COUNTS,
+  ROUND_LENGTHS,
+  MIN_PLAYERS,
+  QUICK_CALL_UNLOCK_GAMES,
+} from "@/lib/game";
 import type { PlayMode, Prefs } from "@/lib/prefs";
 
 export type Mode = PlayMode;
 
 /** Canonical V1 modes. Quick Call content is kept in lib/quickcall but not offered in V1. */
 const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: "sound", label: "🔊 SOUND IT!", hint: "Sounds only. No words, no acting." },
-  { id: "act", label: "🎭 ACT IT!", hint: "Actions only. No words, no sounds." },
-  { id: "mix", label: "🔀 MIX IT!", hint: "Sound and act cards shuffled together." },
+  { id: "sound", label: "SOUND IT!", hint: "Make the sound or the accent. No words." },
+  { id: "act", label: "ACT IT!", hint: "Act it out. No words, no sounds." },
+  { id: "mix", label: "MIX IT!", hint: "Sound or act — each card tells you which." },
 ];
+const QUICK: { id: Mode; label: string; hint: string } = {
+  id: "quick",
+  label: "⚡ QUICK CALL",
+  hint: "Name something in a category starting with a letter.",
+};
 
 export const MAX_NAME = 20;
 
@@ -27,6 +37,7 @@ interface Props {
   categories: CategoryId[];
   setCategories: (c: CategoryId[]) => void;
   cardCount: number;
+  quickUnlocked: boolean;
   onStart: () => void;
 }
 
@@ -42,9 +53,12 @@ export function SetupScreen({
   categories,
   setCategories,
   cardCount,
+  quickUnlocked,
   onStart,
 }: Props) {
-  const mode = prefs.mode;
+  const mode = prefs.mode === "quick" && !quickUnlocked ? "mix" : prefs.mode;
+  const modes = quickUnlocked ? [...MODES, QUICK] : MODES;
+  const gamesLeft = Math.max(0, QUICK_CALL_UNLOCK_GAMES - prefs.gamesCompleted);
   const setMode = (m: Mode) => setPrefs({ mode: m });
   const [name, setName] = useState("");
   const [adding, setAdding] = useState(false);
@@ -77,6 +91,34 @@ export function SetupScreen({
         <p className="mt-2 text-sm font-semibold uppercase tracking-[0.2em] text-white/40">
           One phone. One guesser. Total chaos.
         </p>
+        <div
+          role="radiogroup"
+          aria-label="Mode"
+          className="mt-5 flex flex-wrap justify-center gap-1 rounded-full bg-white/8 p-1"
+        >
+          {modes.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              role="radio"
+              aria-checked={mode === m.id}
+              onClick={() => setMode(m.id)}
+              className={`flex-1 rounded-full px-3 py-2.5 text-sm font-black whitespace-nowrap transition-colors ${
+                mode === m.id ? "bg-card-purple text-white" : "text-white/60"
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className="mt-2 text-xs font-semibold text-white/50">
+          {modes.find((m) => m.id === mode)?.hint}
+        </p>
+        {!quickUnlocked && (
+          <p className="mt-1 text-[11px] font-bold text-white/30">
+            🔒 Secret mode unlocks after {gamesLeft} more {gamesLeft === 1 ? "game" : "games"}
+          </p>
+        )}
       </header>
 
       {/* Players */}
@@ -235,29 +277,8 @@ export function SetupScreen({
         )}
       </section>
 
-      {/* Mode */}
-      <section>
-        <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">Mode</h2>
-        <div className="flex flex-col gap-2">
-          {MODES.map((m) => (
-            <button
-              key={m.id}
-              type="button"
-              aria-pressed={mode === m.id}
-              onClick={() => setMode(m.id)}
-              className={`rounded-2xl px-5 py-4 text-left transition-colors ${
-                mode === m.id ? "bg-card-purple text-white" : "bg-white/8 text-white/70"
-              }`}
-            >
-              <div className="text-xl font-black">{m.label}</div>
-              <div className="text-xs font-semibold opacity-70">{m.hint}</div>
-            </button>
-          ))}
-        </div>
-      </section>
-
       {/* Categories */}
-      {
+      {mode !== "quick" && (
         <section>
           <h2 className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-white/40">
             Categories
@@ -292,7 +313,7 @@ export function SetupScreen({
             {cardCount} cards in this deck
           </p>
         </section>
-      }
+      )}
 
       {/* Round setup */}
       <section>

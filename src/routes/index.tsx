@@ -134,7 +134,6 @@ function SoundItGame() {
 
   const deckRef = useRef<ReturnType<typeof createPromptDeck<PlayCard>> | null>(null);
   const [card, setCard] = useState<PlayCard | null>(null);
-  const [nextColorIdx, setNextColorIdx] = useState(1);
   const [bonus, setBonus] = useState(0);
   const [log, setLog] = useState<CardLogEntry[]>([]);
   const cardShownAt = useRef(0);
@@ -593,6 +592,7 @@ function SoundItGame() {
           categories={categories}
           setCategories={setCategories}
           cardCount={availableCards.length}
+          quickUnlocked={quickUnlocked}
           onStart={startGame}
         />
       )}
@@ -876,6 +876,21 @@ function FinalScoreboard({
 }) {
   const totals = aggregateScores(results);
   const top = winners(totals);
+  const [shared, setShared] = useState<string | null>(null);
+  const share = async () => {
+    const text = shareText(totals);
+    try {
+      const nav = navigator as Navigator & { share?: (d: { text: string; title?: string }) => Promise<void> };
+      if (typeof nav.share === "function") {
+        await nav.share({ title: "Sound It! scores", text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShared("Copied to clipboard!");
+    } catch {
+      setShared("Couldn't share — try a screenshot");
+    }
+  };
   const medals = ["🥇", "🥈", "🥉"];
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-5 px-5 pt-[max(3rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
@@ -930,12 +945,27 @@ function FinalScoreboard({
           style={{ fontFamily: "var(--font-display)" }}
         >
           PLAY AGAIN
+          <span className="block text-sm opacity-60" style={{ fontFamily: "inherit" }}>
+            same players
+          </span>
         </button>
+        <button
+          type="button"
+          onClick={() => void share()}
+          className="w-full rounded-3xl bg-card-blue py-4 text-lg font-black text-white"
+        >
+          📤 SHARE SCORE
+        </button>
+        {shared && (
+          <p role="status" className="text-center text-sm font-bold text-white/60">
+            {shared}
+          </p>
+        )}
         <button
           onClick={onNewGame}
           className="w-full rounded-3xl bg-white/10 py-4 text-lg font-black text-white/70"
         >
-          NEW GAME / CHANGE SETTINGS
+          NEW GAME · NEW PLAYERS
         </button>
       </div>
     </div>
