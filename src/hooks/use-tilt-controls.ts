@@ -12,41 +12,40 @@ interface Options {
   preferOn?: boolean;
 }
 
-/* ---- v15 gesture tuning: orientation angle only ---- */
+/* ---- v16 gesture tuning: orientation angle only, rebase after lock ---- */
 export const TRIGGER_DEG = 18;
-export const REARM_DEG = 8;
-export const LOCK_MS = 1200;
+export const HOLD_DEG = 15;
+export const LOCK_MS = 600;
 export const HOLD_MS = 800;
-export const RETURN_MS = 600;
 const CALIBRATE_MS = 800;
 const CAL_HOLD_MS = 500;
 
-export type TiltPhase = "HOLD" | "READY" | "LOCKED" | "WAIT_FOR_RETURN";
+export type TiltPhase = "HOLD" | "READY" | "LOCKED";
 export interface TiltMachine {
   phase: TiltPhase;
-  /** HOLD/WAIT: when stillness began (0 = not still); LOCKED: when lock began. */
+  /** HOLD: when stillness began (0 = not still); LOCKED: when lock began. */
   since: number | null;
 }
 export const initialTiltMachine = (): TiltMachine => ({ phase: "HOLD", since: null });
 
 /**
  * Pure tilt state machine. `v` = signed delta from baseline, positive = DOWN.
- * Fires at most once per READY -> LOCKED transition.
+ * Fires at most once per READY -> LOCKED transition. After LOCK_MS the machine
+ * returns directly to READY; the caller rebases the baseline to the current
+ * angle at that moment, so no return-to-neutral is ever required.
  */
 export function stepTilt(
   m: TiltMachine,
   v: number,
   now: number,
 ): { machine: TiltMachine; fire: "correct" | "pass" | null } {
-  const near = Math.abs(v) < REARM_DEG;
+  const near = Math.abs(v) < HOLD_DEG;
   switch (m.phase) {
-    case "HOLD":
-    case "WAIT_FOR_RETURN": {
-      const need = m.phase === "HOLD" ? HOLD_MS : RETURN_MS;
-      if (!near) return { machine: { phase: m.phase, since: null }, fire: null };
+    case "HOLD": {
+      if (!near) return { machine: { phase: "HOLD", since: null }, fire: null };
       const since = m.since ?? now;
-      if (now - since >= need) return { machine: { phase: "READY", since: null }, fire: null };
-      return { machine: { phase: m.phase, since }, fire: null };
+      if (now - since >= HOLD_MS) return { machine: { phase: "READY", since: null }, fire: null };
+      return { machine: { phase: "HOLD", since }, fire: null };
     }
     case "READY":
       if (v > TRIGGER_DEG) return { machine: { phase: "LOCKED", since: now }, fire: "correct" };
@@ -54,7 +53,7 @@ export function stepTilt(
       return { machine: m, fire: null };
     case "LOCKED":
       if (now - (m.since ?? now) >= LOCK_MS)
-        return stepTilt({ phase: "WAIT_FOR_RETURN", since: null }, v, now);
+        return { machine: { phase: "READY", since: null }, fire: null };
       return { machine: m, fire: null };
   }
 }
@@ -228,7 +227,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     };
   }, [motionOn, recalibrate]);
 
-  /* ---- v15 gesture detection: orientation angle only, single axis ---- */
+  /* ---- v16 gesture detection: orientation angle only, single axis, rebase after lock ---- */
   useEffect(() => {
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
@@ -243,7 +242,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       delta = 0,
       lastRaw: number | null = null,
       lastAt = 0,
-      flick = 0;
+      flick = 0,
+      rebase = 0;
     let m: TiltMachine = initialTiltMachine();
     let calSince = 0,
       calSign = 0;
@@ -282,7 +282,14 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
         show(now);
         return;
       }
-      delta = raw - baseline;
+      /* v16: once the post-action lock expires, rebase the baseline to the
+         current angle so the next flick works from wherever the phone is. */
+      if (m.phase === "LOCKED" && now - (m.since ?? now) >= LOCK_MS) {
+        rebase = raw - baseline;
+        delta = 0;
+      } else {
+        delta = raw - baseline - rebase;
+      }
       show(now);
       if (now < lockedUntil.current) return;
 
