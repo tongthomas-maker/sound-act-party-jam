@@ -252,8 +252,9 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
           } else neutralSince = 0;
           return;
         case "NEUTRAL": {
-          if (abs < trigger) return;
-          const kind = delta < 0 ? "down" : "up";
+          // fire only on a fresh crossing away from center — never on return
+          if (!crossed) return;
+          const kind = delta > 0 ? "down" : "up"; // DOWN positive = CORRECT
           // block the opposite gesture until neutral + 500ms (bounce-back guard)
           if (lastAction && kind !== lastAction && now - neutralAt < OPPOSITE_BLOCK_MS) return;
           state = "LOCKED";
