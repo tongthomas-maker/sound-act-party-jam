@@ -34,7 +34,7 @@ export function deviceTiltDefaults(device: TiltDevice): { sign: 1 | -1; lockMs: 
   return { sign: 1, lockMs: 1000 };
 }
 
-export const swapKey = (device: TiltDevice) => `tiltSwap_${device}`;
+export const swapKey = (device: TiltDevice) => `tiltDir_${device}`;
 
 interface TiltDebug {
   beta: number;
