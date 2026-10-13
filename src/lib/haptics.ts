@@ -11,6 +11,7 @@ export function isHapticsEnabled() {
 function buzz(pattern: number | number[]) {
   if (!hapticsOn) return;
   if (typeof navigator === "undefined") return;
+  if (!("vibrate" in navigator)) return;
   const nav = navigator as Navigator & { vibrate?: (p: number | number[]) => boolean };
   if (typeof nav.vibrate !== "function") return;
   try {
@@ -22,22 +23,32 @@ function buzz(pattern: number | number[]) {
 
 export function hapticsSupported() {
   if (typeof navigator === "undefined") return false;
-  return typeof (navigator as Navigator & { vibrate?: unknown }).vibrate === "function";
+  return "vibrate" in navigator;
 }
 
-/** GOT IT — one crisp positive pulse. */
+/** GOT IT — strong double buzz. */
 export function hapticGotIt() {
-  buzz(28);
+  buzz([100, 30, 100]);
 }
 
-/** PASS (card) — two short light pulses. */
+/** PASS (card) — one long buzz. */
 export function hapticSkip() {
-  buzz([14, 60, 14]);
+  buzz([200]);
+}
+
+/** Last-10-seconds light tick. */
+export function hapticTick() {
+  buzz(20);
 }
 
 /** Pass to next player — one medium pulse. */
 export function hapticPass() {
   buzz(60);
+}
+
+/** Game win celebration. */
+export function hapticWin() {
+  buzz([100, 50, 100, 50, 200]);
 }
 
 /** Time's up — strong distinctive pattern, synced with the buzzer. */

@@ -32,6 +32,8 @@ import {
   setMusicEnabled,
   setMusicIntensity,
   setSfxEnabled,
+  setVolume,
+  lastTenBeep,
   skipSound,
   startMusic,
   stopMusic,
@@ -53,6 +55,8 @@ import {
   hapticPass,
   hapticSkip,
   hapticTimeUp,
+  hapticTick,
+  hapticWin,
   setHapticsEnabled,
 } from "@/lib/haptics";
 
@@ -124,6 +128,7 @@ function SoundItGame() {
   const [cardIndex, setCardIndex] = useState(0);
   const [exit, setExit] = useState<Action | null>(null);
   const [stamp, setStamp] = useState<string | null>(null);
+  const [fx, setFx] = useState<{ kind: Action; id: number } | null>(null);
   const [actionFeedback, setActionFeedback] = useState<Action | null>(null);
   const actionFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -152,7 +157,8 @@ function SoundItGame() {
     setMusicEnabled(prefs.music);
     setSfxEnabled(prefs.sfx);
     setHapticsEnabled(prefs.haptics);
-  }, [prefs.music, prefs.sfx, prefs.haptics]);
+    setVolume(prefs.volume / 100);
+  }, [prefs.music, prefs.sfx, prefs.haptics, prefs.volume]);
 
   const setPrefs = useCallback((patch: Partial<Prefs>) => {
     setPrefsState((p) => {
@@ -233,8 +239,10 @@ function SoundItGame() {
     const tickLoop = () => {
       const left = leftRef.current;
       if (left <= 0) return;
-      if (left <= 10) tick(2);
-      else if (left <= PRESSURE_SECONDS) tick(1);
+      // last 10s: the clock below fires one 800Hz beep + light haptic per second
+      if (left <= 10) {
+        /* no extra tick */
+      } else if (left <= PRESSURE_SECONDS) tick(1);
       else tick(0);
       if (left <= PRESSURE_SECONDS) {
         beatCount += 1;
@@ -251,6 +259,10 @@ function SoundItGame() {
       const left = step.left;
       setSecondsLeft(left);
       setMusicIntensity(intensity(left));
+      if (left > 0 && left <= 10) {
+        lastTenBeep();
+        hapticTick();
+      }
       if (step.expired) {
         clearInterval(secInterval);
         clearTimeout(tickTimer);
@@ -289,10 +301,12 @@ function SoundItGame() {
       gotItSound();
       hapticGotIt();
       setStamp(next.streak >= 3 ? `🔥 ${next.streak} IN A ROW!` : "+1");
+      setFx({ kind: "got", id: Date.now() });
     } else {
       skipSound();
       hapticSkip();
       setStamp("PASS");
+      setFx({ kind: "pass", id: Date.now() });
     }
     if (advanceTimer.current) clearTimeout(advanceTimer.current);
     advanceTimer.current = setTimeout(() => {
@@ -392,6 +406,7 @@ function SoundItGame() {
     hapticPass();
     if (turnIndex + 1 >= turns.length) {
       fanfare();
+      hapticWin();
       setPhase("final");
     } else {
       setTurnIndex((i) => i + 1);
@@ -448,7 +463,30 @@ function SoundItGame() {
 
   /* ---------- render ---------- */
   return (
-    <main className="min-h-dvh bg-stage text-white select-none">
+    <main
+      className={`min-h-dvh bg-stage text-white select-none ${fx?.kind === "pass" ? "si-shake" : ""}`}
+    >
+      {fx && (
+        <div
+          key={fx.id}
+          aria-hidden
+          onAnimationEnd={() => setFx(null)}
+          className={`si-flash pointer-events-none fixed inset-0 z-40 ${fx.kind === "got" ? "bg-card-lime" : "bg-card-pink"}`}
+        >
+          {fx.kind === "got" &&
+            Array.from({ length: 24 }, (_, i) => (
+              <span
+                key={i}
+                className="si-confetti absolute top-1/2 left-1/2 h-3 w-2 rounded-sm"
+                style={{
+                  background: `var(--color-card-${["yellow", "pink", "blue", "purple"][i % 4]})`,
+                  ["--dx" as string]: `${Math.cos((i / 24) * Math.PI * 2) * (30 + (i % 3) * 12)}vw`,
+                  ["--dy" as string]: `${Math.sin((i / 24) * Math.PI * 2) * (25 + (i % 4) * 8)}vh`,
+                }}
+              />
+            ))}
+        </div>
+      )}
       {phase !== "setup" && (
         <button
           onClick={toggleMute}

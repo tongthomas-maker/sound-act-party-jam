@@ -3,6 +3,9 @@ let master: GainNode | null = null;
 let muted = false;
 let sfxOn = true;
 let musicOn = true;
+let volume = 0.8;
+
+const masterLevel = () => (muted ? 0 : volume * 1.25);
 
 function ensure(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -13,7 +16,7 @@ function ensure(): AudioContext | null {
     if (!AC) return null;
     ctx = new AC();
     master = ctx.createGain();
-    master.gain.value = muted ? 0 : 1;
+    master.gain.value = masterLevel();
     // soft limiter keeps the louder mix clean instead of clipping
     const comp = ctx.createDynamicsCompressor();
     comp.threshold.setValueAtTime(-10, ctx.currentTime);
@@ -28,17 +31,30 @@ function ensure(): AudioContext | null {
   return ctx;
 }
 
+/** Call from a user tap: creates/resumes the AudioContext (iOS Safari unlock). */
 export function unlockAudio() {
-  ensure();
+  return ensure();
 }
 
 export function setMuted(m: boolean) {
   muted = m;
-  if (master && ctx) master.gain.setTargetAtTime(m ? 0 : 1, ctx.currentTime, 0.01);
+  if (master && ctx) master.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.01);
 }
 
 export function isMuted() {
   return muted;
+}
+
+/** Master volume 0–1 (default 0.8). */
+export function setVolume(v: number) {
+  volume = Math.max(0, Math.min(1, v));
+  if (master && ctx) master.gain.setTargetAtTime(masterLevel(), ctx.currentTime, 0.01);
+}
+
+/** Test hook: drop the cached context. */
+export function __resetAudioForTests() {
+  ctx = null;
+  master = null;
 }
 
 /* ---------- independent channel toggles ---------- */
@@ -150,13 +166,20 @@ export function heartbeat(intensity = 1) {
   thump(0.18, 0.2 * intensity);
 }
 
+/** CORRECT — loud C major chord (C5-E5-G5), quick attack, 0.3s. */
 export function gotItSound() {
-  tone(660, 0.1, "triangle", 0.5, 0);
-  tone(990, 0.22, "triangle", 0.5, 0.07);
+  [523, 659, 784].forEach((f) => tone(f, 0.3, "triangle", 0.8 / 2, 0));
 }
 
+/** PASS — low dissonant buzzer 150Hz + 200Hz, 0.5s. */
 export function skipSound() {
-  tone(330, 0.16, "sawtooth", 0.3, 0, 180);
+  tone(150, 0.5, "sawtooth", 0.8 / 2, 0);
+  tone(200, 0.5, "square", 0.8 / 3, 0);
+}
+
+/** Last-10-seconds 800Hz short beep. */
+export function lastTenBeep() {
+  tone(800, 0.1, "square", 0.5);
 }
 
 /** Rounded punchy game-show buzzer */
@@ -184,8 +207,11 @@ export function buzzer() {
   });
 }
 
+/** Win fanfare — loud C5-E5-G5-C6 arpeggio, ~1.5s total. */
 export function fanfare() {
-  [523, 659, 784, 1046].forEach((f, i) => tone(f, 0.35, "triangle", 0.45, i * 0.11));
+  [523, 659, 784, 1046].forEach((f, i) =>
+    tone(f, i === 3 ? 0.9 : 0.4, "triangle", 0.7, i * 0.2),
+  );
 }
 
 /* ---------- Sound V2: light instrumental game bed ---------- */

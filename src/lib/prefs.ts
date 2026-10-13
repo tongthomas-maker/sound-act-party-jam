@@ -17,6 +17,8 @@ export interface Prefs {
   roundSeconds: RoundLength;
   rounds: RoundCount;
   mode: PlayMode;
+  /** Master volume 0–100. */
+  volume: number;
 }
 
 export const PREFS_KEY = "sound-it:prefs";
@@ -29,6 +31,7 @@ export const DEFAULT_PREFS: Prefs = {
   roundSeconds: DEFAULT_ROUND_LENGTH,
   rounds: DEFAULT_ROUND_COUNT,
   mode: "mix",
+  volume: 80,
 };
 
 /** Validates unknown stored data field-by-field, falling back to defaults. */
@@ -44,6 +47,10 @@ export function parsePrefs(raw: unknown): Prefs {
     flip: bool("flip"),
     roundSeconds: isRoundLength(o["roundSeconds"]) ? o["roundSeconds"] : DEFAULT_PREFS.roundSeconds,
     rounds: isRoundCount(o["rounds"]) ? o["rounds"] : DEFAULT_PREFS.rounds,
+    volume:
+      typeof o["volume"] === "number" && Number.isFinite(o["volume"])
+        ? Math.max(0, Math.min(100, Math.round(o["volume"] as number)))
+        : DEFAULT_PREFS.volume,
     mode: mode === "sound" || mode === "act" || mode === "mix" ? mode : DEFAULT_PREFS.mode,
   };
 }
