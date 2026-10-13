@@ -197,6 +197,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     let neutralSince = 0;
     let neutralAt = 0; // when we last re-armed
     let lastAction: "down" | "up" | null = null;
+    let prevDelta = 0; // last processed delta, for crossing detection
     let unlockTimer: ReturnType<typeof setTimeout> | undefined;
 
     const process = (raw: number, tiltDeg: number, beta: number, gamma: number, unit: "m" | "d") => {
