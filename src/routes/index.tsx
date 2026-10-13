@@ -708,7 +708,7 @@ function SoundItGame() {
                 className="rounded-full bg-white/10 px-3 py-1 text-xs tabular-nums text-white/60"
               >
                 {tilt.debug.source === "motion"
-                  ? `tilt ${tilt.debug.tiltDeg}° Δ${tilt.debug.delta}m/s²`
+                  ? `ω ${tilt.debug.tiltDeg}°/s Δ${tilt.debug.delta}°`
                   : `γ ${tilt.debug.gamma}° β ${tilt.debug.beta}° Δ${tilt.debug.delta}°`}
                 {` ${tilt.debug.landscape ? "L" : "P"}`}
                 {` ${tilt.debug.state}`}
@@ -730,7 +730,7 @@ function SoundItGame() {
                 onClick={() => tilt.autoCalibrate()}
                 className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70"
               >
-                {tilt.calStep === "down" ? "Now hold UP + tap" : "AUTO CALIBRATE (hold DOWN + tap)"}
+                {tilt.calStep === "armed" ? "Flick DOWN now…" : "AUTO CALIBRATE"}
               </button>
             )}
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
