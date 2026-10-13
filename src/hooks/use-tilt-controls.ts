@@ -317,7 +317,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   const setDownAsCorrect = useCallback(() => {
     const d = lastRawDelta.current;
     if (Math.abs(d) < 0.5) return false;
-    swapRef.current = d < 0 ? 1 : -1;
+    swapRef.current = d > 0 ? 1 : -1; // make current tilt direction read as positive = DOWN = CORRECT
     persistSwap();
     return true;
   }, []);
