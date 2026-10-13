@@ -111,6 +111,8 @@ export interface TurnResult {
   correct: number;
   passes: number;
   bestStreak: number;
+  /** FIRE MODE bonus points earned this turn. */
+  bonus?: number;
 }
 
 export interface PlayerTotal {
@@ -136,7 +138,7 @@ export function aggregateScores(results: TurnResult[]): PlayerTotal[] {
       rank: 0,
     };
     t.name = r.name;
-    t.total += r.correct;
+    t.total += r.correct + (r.bonus ?? 0);
     t.passes += r.passes;
     t.bestStreak = Math.max(t.bestStreak, r.bestStreak);
     t.turns += 1;
@@ -220,4 +222,55 @@ export function stepRoundClock(left: number) {
   if (left <= 0) return { left: 0, expired: false };
   const next = Math.max(0, Math.floor(left) - 1);
   return { left: next, expired: next === 0 };
+}
+
+/* ---------- fire mode (streak bonus) ---------- */
+
+export const FIRE_STREAK = 3;
+
+/** FIRE MODE is on once a guesser has 3+ in a row. */
+export function isFireMode(streak: number) {
+  return streak >= FIRE_STREAK;
+}
+
+/** Bonus for a GOT IT made while already in FIRE MODE (prior streak 3+): +1. PASS earns nothing. */
+export function fireBonus(streakBefore: number, a: Action) {
+  return a === "got" && isFireMode(streakBefore) ? 1 : 0;
+}
+
+/** Confetti burst on every 3rd streak (3, 6, 9…). */
+export function isStreakMilestone(streakAfter: number) {
+  return streakAfter > 0 && streakAfter % FIRE_STREAK === 0;
+}
+
+/* ---------- turn recap ---------- */
+
+export interface CardLogEntry {
+  prompt: string;
+  action: Action;
+  ms: number; // time from card shown to action
+}
+
+export function recap(log: CardLogEntry[]) {
+  const correct = log.filter((e) => e.action === "got");
+  const passed = log.filter((e) => e.action === "pass");
+  const fastest = correct.reduce<CardLogEntry | null>(
+    (best, e) => (!best || e.ms < best.ms ? e : best),
+    null,
+  );
+  return { correct, passed, fastest };
+}
+
+/* ---------- Quick Call unlock ---------- */
+
+export const QUICK_CALL_UNLOCK_GAMES = 3;
+export function isQuickCallUnlocked(gamesCompleted: number) {
+  return gamesCompleted >= QUICK_CALL_UNLOCK_GAMES;
+}
+
+/* ---------- share ---------- */
+
+export function shareText(totals: PlayerTotal[]) {
+  const lines = totals.map((t) => `${t.rank}. ${t.name} — ${t.total}`);
+  return `🔊 Sound It! final scores\n${lines.join("\n")}`;
 }

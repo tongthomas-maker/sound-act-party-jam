@@ -1,13 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { SetupScreen } from "@/components/game/SetupScreen";
-import { CATEGORIES, CLUE_LABEL, filterCards, type Card, type CategoryId } from "@/lib/cards";
+import { CATEGORIES, type CategoryId } from "@/lib/cards";
+import { buildPlayPool, type PlayCard } from "@/lib/playcards";
+import { useWakeLock } from "@/hooks/use-wake-lock";
 import {
   aggregateScores,
   applyAction,
   buildTurnOrder,
   createPromptDeck,
   emptyStats,
+  fireBonus,
+  isFireMode,
+  isQuickCallUnlocked,
+  isStreakMilestone,
+  recap,
+  shareText,
+  type CardLogEntry,
   formatClock,
   gestureToAction,
   shuffleWith,
@@ -123,12 +132,16 @@ function SoundItGame() {
   const [turnIndex, setTurnIndex] = useState(0);
   const [results, setResults] = useState<TurnResult[]>([]);
 
-  const deckRef = useRef<ReturnType<typeof createPromptDeck<Card>> | null>(null);
-  const [card, setCard] = useState<Card | null>(null);
+  const deckRef = useRef<ReturnType<typeof createPromptDeck<PlayCard>> | null>(null);
+  const [card, setCard] = useState<PlayCard | null>(null);
+  const [bonus, setBonus] = useState(0);
+  const [log, setLog] = useState<CardLogEntry[]>([]);
+  const cardShownAt = useRef(0);
+  const fireRef = useRef(false);
   const [cardIndex, setCardIndex] = useState(0);
   const [exit, setExit] = useState<Action | null>(null);
   const [stamp, setStamp] = useState<string | null>(null);
-  const [fx, setFx] = useState<{ kind: Action; id: number } | null>(null);
+  const [fx, setFx] = useState<{ kind: Action; id: number; burst?: boolean } | null>(null);
   const [actionFeedback, setActionFeedback] = useState<Action | null>(null);
   const actionFeedbackTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -177,10 +190,12 @@ function SoundItGame() {
     saveSelection(next);
   }, []);
 
-  const availableCards = useMemo(
-    () => filterCards(prefs.mode, categories.length === CATEGORIES.length ? "all" : categories),
-    [prefs.mode, categories],
-  );
+  const quickUnlocked = isQuickCallUnlocked(prefs.gamesCompleted);
+  const playMode = prefs.mode === "quick" && !quickUnlocked ? "mix" : prefs.mode;
+  const availableCards = useMemo(() => buildPlayPool(playMode, categories), [playMode, categories]);
+  const fire = phase === "play" && isFireMode(stats.streak);
+  fireRef.current = fire;
+  useWakeLock(phase !== "setup" && phase !== "final");
 
   const turn = turns[turnIndex];
   const guesser = turn?.player;
@@ -216,6 +231,7 @@ function SoundItGame() {
         revealChime();
         leftRef.current = prefs.roundSeconds;
         setSecondsLeft(prefs.roundSeconds);
+        cardShownAt.current = Date.now();
         setPhase("play");
         return;
       }
@@ -243,12 +259,13 @@ function SoundItGame() {
       if (left <= 10) {
         /* no extra tick */
       } else if (left <= PRESSURE_SECONDS) tick(1);
-      else tick(0);
+      else tick(fireRef.current ? 1 : 0);
       if (left <= PRESSURE_SECONDS) {
         beatCount += 1;
         if (left <= 6 || beatCount % 2 === 0) heartbeat(left <= 6 ? 1.2 : 0.8);
       }
-      const gap = left <= 5 ? 220 : left <= 10 ? 380 : left <= PRESSURE_SECONDS ? 600 : 1000;
+      const base = left <= 5 ? 220 : left <= 10 ? 380 : left <= PRESSURE_SECONDS ? 600 : 1000;
+      const gap = fireRef.current ? Math.round(base * 0.6) : base;
       tickTimer = setTimeout(tickLoop, gap);
     };
     tickTimer = setTimeout(tickLoop, 1000);
@@ -297,11 +314,16 @@ function SoundItGame() {
     }, 300);
     const next = applyAction(stats, kind);
     setStats(next);
+    setBonus((b) => b + fireBonus(stats.streak, kind));
+    if (card) {
+      const entry = { prompt: card.prompt, action: kind, ms: Date.now() - cardShownAt.current };
+      setLog((l) => [...l, entry]);
+    }
     if (kind === "got") {
       gotItSound();
       hapticGotIt();
       setStamp(next.streak >= 3 ? `🔥 ${next.streak} IN A ROW!` : "+1");
-      setFx({ kind: "got", id: Date.now() });
+      setFx({ kind: "got", id: Date.now(), burst: isStreakMilestone(next.streak) });
     } else {
       skipSound();
       hapticSkip();
@@ -312,6 +334,7 @@ function SoundItGame() {
     advanceTimer.current = setTimeout(() => {
       advanceTimer.current = null;
       setCard(deckRef.current?.next() ?? null);
+      cardShownAt.current = Date.now();
       setCardIndex((i) => i + 1);
       setExit(null);
       lockRef.current = false;
@@ -374,6 +397,8 @@ function SoundItGame() {
     unlockAudio();
     setCardIndex(0);
     setStats(emptyStats());
+    setBonus(0);
+    setLog([]);
     lockRef.current = false;
     setCard(deckRef.current?.next() ?? null);
     countRef.current = COUNTDOWN_FROM;
@@ -398,15 +423,17 @@ function SoundItGame() {
         correct: stats.correct,
         passes: stats.passes,
         bestStreak: stats.bestStreak,
+        bonus,
       },
     ]);
-  }, [phase, turn, turnIndex, stats]);
+  }, [phase, turn, turnIndex, stats, bonus]);
 
   const goNext = () => {
     hapticPass();
     if (turnIndex + 1 >= turns.length) {
       fanfare();
       hapticWin();
+      setPrefs({ gamesCompleted: prefs.gamesCompleted + 1 });
       setPhase("final");
     } else {
       setTurnIndex((i) => i + 1);
@@ -422,6 +449,8 @@ function SoundItGame() {
   };
 
   const colorIdx = cardIndex % CARD_COLORS.length;
+  const peekColor = CARD_COLORS[(cardIndex + 1) % CARD_COLORS.length];
+  const turnRecap = recap(log);
   const color = CARD_COLORS[colorIdx];
   const darkText = DARK_TEXT_ON.includes(colorIdx);
   const urgent = secondsLeft <= PRESSURE_SECONDS;
@@ -474,14 +503,14 @@ function SoundItGame() {
           className={`si-flash pointer-events-none fixed inset-0 z-40 ${fx.kind === "got" ? "bg-card-lime" : "bg-card-pink"}`}
         >
           {fx.kind === "got" &&
-            Array.from({ length: 24 }, (_, i) => (
+            Array.from({ length: fx.burst ? 60 : 24 }, (_, i) => (
               <span
                 key={i}
                 className="si-confetti absolute top-1/2 left-1/2 h-3 w-2 rounded-sm"
                 style={{
                   background: `var(--color-card-${["yellow", "pink", "blue", "purple"][i % 4]})`,
-                  ["--dx" as string]: `${Math.cos((i / 24) * Math.PI * 2) * (30 + (i % 3) * 12)}vw`,
-                  ["--dy" as string]: `${Math.sin((i / 24) * Math.PI * 2) * (25 + (i % 4) * 8)}vh`,
+                  ["--dx" as string]: `${Math.cos((i / (fx.burst ? 60 : 24)) * Math.PI * 2) * (fx.burst ? 45 : 30) * (1 + (i % 3) * 0.4)}vw`,
+                  ["--dy" as string]: `${Math.sin((i / (fx.burst ? 60 : 24)) * Math.PI * 2) * (fx.burst ? 40 : 25) * (1 + (i % 4) * 0.3)}vh`,
                 }}
               />
             ))}
@@ -560,6 +589,7 @@ function SoundItGame() {
           categories={categories}
           setCategories={setCategories}
           cardCount={availableCards.length}
+          quickUnlocked={quickUnlocked}
           onStart={startGame}
         />
       )}
@@ -578,12 +608,13 @@ function SoundItGame() {
           </h2>
           <p className="max-w-md text-lg font-bold text-white/70">
             {guesser.name}, don&apos;t look at the screen! 🙈 Everyone else:{" "}
-            {prefs.mode === "sound"
-              ? "make the sounds"
-              : prefs.mode === "act"
-                ? "act it out"
-                : "follow each card's badge"}
-            . No words!
+            {playMode === "sound"
+              ? "make the sounds. No words!"
+              : playMode === "act"
+                ? "act it out. No words!"
+                : playMode === "quick"
+                  ? "read the card out loud. Guesser shouts answers!"
+                  : "follow each card's badge. No words!"}
           </p>
           <p className="text-base font-black text-white/60">
             {landscape ? "✅ Sideways — perfect" : "↔️ Turn sideways to play"} ·{" "}
@@ -633,25 +664,43 @@ function SoundItGame() {
           >
             {countValue}
           </div>
+          <p className="mt-4 text-xl font-black uppercase tracking-wider text-white/70">
+            {landscape ? "📱 Hold sideways — on forehead" : "↔️ Hold sideways!"}
+          </p>
+          {fullscreen.supported && !fullscreen.isFullscreen && (
+            <button
+              type="button"
+              onClick={() => void fullscreen.expand()}
+              className="mt-4 rounded-full bg-white/12 px-5 py-3 text-sm font-black text-white"
+            >
+              ⛶ FULL SCREEN
+            </button>
+          )}
         </div>
       )}
 
       {phase === "play" && card && (
         <div
           className={`flex h-dvh flex-col px-2 pt-[env(safe-area-inset-top)] pb-[max(0.5rem,env(safe-area-inset-bottom))] ${
-            urgent ? "si-pressure" : ""
+            fire ? "si-fire" : urgent ? "si-pressure" : ""
           }`}
         >
           {/* status strip */}
           <div className="flex items-center gap-2 px-2 py-2 text-sm font-black">
-            <span className="rounded-full bg-white/10 px-3 py-1">🔥 {stats.streak}</span>
+            <span
+              className={`rounded-full px-3 py-1 ${fire ? "si-pop bg-card-orange text-black" : "bg-white/10"}`}
+              key={stats.streak}
+            >
+              {stats.streak >= 2 ? `🔥 x${stats.streak}` : `🔥 ${stats.streak}`}
+              {fire ? " FIRE MODE" : ""}
+            </span>
             <span
               data-testid="timer"
-              className={`rounded-full px-3 py-1 tabular-nums ${urgent ? "si-urgent bg-card-pink text-white" : "bg-white/10"}`}
+              className={`rounded-full px-3 py-1 tabular-nums ${fire ? "bg-card-orange text-black" : ""} ${urgent ? "si-urgent" : ""} ${!fire && urgent ? "bg-card-pink text-white" : ""} ${!fire && !urgent ? "bg-white/10" : ""}`}
             >
               ⏱ {formatClock(secondsLeft)}
             </span>
-            <span className="rounded-full bg-white/10 px-3 py-1">✓ {stats.correct}</span>
+            <span className="rounded-full bg-white/10 px-3 py-1">✓ {stats.correct + bonus}</span>
             <span className="ml-auto truncate pr-12 text-xs uppercase tracking-wider text-white/40">
               {guesser?.name}
             </span>
@@ -660,27 +709,40 @@ function SoundItGame() {
           <div
             className={`relative flex min-h-0 flex-1 gap-2 ${landscape ? "flex-row" : "flex-col"}`}
           >
-            <div
-              key={cardIndex}
-              className={`si-card-in flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.25rem] px-6 text-center ${
-                exit === "got" ? "si-slide-out" : exit === "pass" ? "si-flip-out" : ""
-              }`}
-              style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
-            >
-              {prefs.mode === "mix" && (
-                <span
-                  className="mb-4 rounded-full px-5 py-2 text-sm font-black tracking-wide"
-                  style={{ backgroundColor: darkText ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)" }}
-                >
-                  {CLUE_LABEL[card.clueType]}
-                </span>
-              )}
-              <h2
-                className={`${promptSize(card.prompt, landscape)} uppercase`}
-                style={{ fontFamily: "var(--font-display)" }}
+            <div className="relative flex min-h-0 flex-1">
+              <div
+                aria-hidden
+                className="absolute inset-0 translate-y-2 scale-[0.96] rounded-[2.25rem] opacity-60"
+                style={{ backgroundColor: peekColor }}
+              />
+              <div
+                key={cardIndex}
+                className={`si-card-in relative flex min-h-0 flex-1 flex-col items-center justify-center rounded-[2.25rem] px-6 text-center shadow-2xl ${
+                  exit === "got" ? "si-fly-down" : exit === "pass" ? "si-fly-up" : ""
+                }`}
+                style={{ backgroundColor: color, color: darkText ? "#0a0a0c" : "#fff" }}
               >
-                {card.prompt}
-              </h2>
+                <span aria-hidden className="absolute left-5 top-4 text-4xl">
+                  {card.icon}
+                </span>
+                {card.badge && (
+                  <span
+                    className="mb-4 rounded-full px-5 py-2 text-sm font-black tracking-wide"
+                    style={{ backgroundColor: darkText ? "rgba(0,0,0,0.12)" : "rgba(0,0,0,0.22)" }}
+                  >
+                    {card.badge}
+                  </span>
+                )}
+                <h2
+                  className={`${promptSize(card.prompt, landscape)} font-black uppercase`}
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {card.prompt}
+                </h2>
+                <span className="absolute bottom-4 left-0 right-0 text-center text-base font-black uppercase tracking-wider opacity-70">
+                  {card.hint}
+                </span>
+              </div>
             </div>
 
             {landscape ? (
@@ -743,13 +805,39 @@ function SoundItGame() {
           </h2>
           <div className="grid w-full max-w-sm grid-cols-3 gap-3">
             {[
-              { label: "Got it", value: stats.correct, c: "bg-card-lime text-black" },
+              { label: "Points", value: stats.correct + bonus, c: "bg-card-lime text-black" },
               { label: "Passed", value: stats.passes, c: "bg-white/10 text-white" },
               { label: "Best 🔥", value: stats.bestStreak, c: "bg-card-purple text-white" },
             ].map((s) => (
               <div key={s.label} className={`rounded-3xl py-5 ${s.c}`}>
                 <div className="text-5xl font-black">{s.value}</div>
                 <div className="mt-1 text-xs font-bold uppercase opacity-70">{s.label}</div>
+              </div>
+            ))}
+          </div>
+          {turnRecap.fastest && (
+            <p className="text-sm font-black text-white/70">
+              ⚡ Fastest: {turnRecap.fastest.prompt} ({(turnRecap.fastest.ms / 1000).toFixed(1)}s)
+            </p>
+          )}
+          {bonus > 0 && (
+            <p className="text-sm font-black text-card-orange">🔥 +{bonus} FIRE MODE bonus</p>
+          )}
+          <div className="grid w-full max-w-sm grid-cols-2 gap-3 text-left">
+            {[
+              { title: "✓ Got it", items: turnRecap.correct, c: "text-card-lime" },
+              { title: "↷ Passed", items: turnRecap.passed, c: "text-white/60" },
+            ].map((col) => (
+              <div key={col.title} className="rounded-2xl bg-white/8 p-3">
+                <div className={`mb-1 text-xs font-black uppercase ${col.c}`}>{col.title}</div>
+                <ul className="max-h-40 overflow-y-auto text-sm font-bold text-white/80">
+                  {col.items.length === 0 && <li className="text-white/30">—</li>}
+                  {col.items.map((e, i) => (
+                    <li key={i} className="[overflow-wrap:anywhere]">
+                      {e.prompt}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ))}
           </div>
@@ -785,6 +873,23 @@ function FinalScoreboard({
 }) {
   const totals = aggregateScores(results);
   const top = winners(totals);
+  const [shared, setShared] = useState<string | null>(null);
+  const share = async () => {
+    const text = shareText(totals);
+    try {
+      const nav = navigator as Navigator & {
+        share?: (d: { text: string; title?: string }) => Promise<void>;
+      };
+      if (typeof nav.share === "function") {
+        await nav.share({ title: "Sound It! scores", text });
+        return;
+      }
+      await navigator.clipboard.writeText(text);
+      setShared("Copied to clipboard!");
+    } catch {
+      setShared("Couldn't share — try a screenshot");
+    }
+  };
   const medals = ["🥇", "🥈", "🥉"];
   return (
     <div className="mx-auto flex min-h-dvh w-full max-w-lg flex-col gap-5 px-5 pt-[max(3rem,env(safe-area-inset-top))] pb-[max(2rem,env(safe-area-inset-bottom))]">
@@ -839,12 +944,27 @@ function FinalScoreboard({
           style={{ fontFamily: "var(--font-display)" }}
         >
           PLAY AGAIN
+          <span className="block text-sm opacity-60" style={{ fontFamily: "inherit" }}>
+            same players
+          </span>
         </button>
+        <button
+          type="button"
+          onClick={() => void share()}
+          className="w-full rounded-3xl bg-card-blue py-4 text-lg font-black text-white"
+        >
+          📤 SHARE SCORE
+        </button>
+        {shared && (
+          <p role="status" className="text-center text-sm font-bold text-white/60">
+            {shared}
+          </p>
+        )}
         <button
           onClick={onNewGame}
           className="w-full rounded-3xl bg-white/10 py-4 text-lg font-black text-white/70"
         >
-          NEW GAME / CHANGE SETTINGS
+          NEW GAME · NEW PLAYERS
         </button>
       </div>
     </div>

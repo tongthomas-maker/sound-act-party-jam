@@ -7,7 +7,7 @@ import {
   type RoundLength,
 } from "./game";
 
-export type PlayMode = "sound" | "act" | "mix";
+export type PlayMode = "sound" | "act" | "mix" | "quick";
 
 export interface Prefs {
   music: boolean;
@@ -19,6 +19,8 @@ export interface Prefs {
   mode: PlayMode;
   /** Master volume 0–100. */
   volume: number;
+  /** Completed games on this device (unlocks Quick Call). */
+  gamesCompleted: number;
 }
 
 export const PREFS_KEY = "sound-it:prefs";
@@ -32,6 +34,7 @@ export const DEFAULT_PREFS: Prefs = {
   rounds: DEFAULT_ROUND_COUNT,
   mode: "mix",
   volume: 80,
+  gamesCompleted: 0,
 };
 
 /** Validates unknown stored data field-by-field, falling back to defaults. */
@@ -51,7 +54,14 @@ export function parsePrefs(raw: unknown): Prefs {
       typeof o["volume"] === "number" && Number.isFinite(o["volume"])
         ? Math.max(0, Math.min(100, Math.round(o["volume"] as number)))
         : DEFAULT_PREFS.volume,
-    mode: mode === "sound" || mode === "act" || mode === "mix" ? mode : DEFAULT_PREFS.mode,
+    gamesCompleted:
+      typeof o["gamesCompleted"] === "number" && Number.isFinite(o["gamesCompleted"])
+        ? Math.max(0, Math.floor(o["gamesCompleted"] as number))
+        : 0,
+    mode:
+      mode === "sound" || mode === "act" || mode === "mix" || mode === "quick"
+        ? mode
+        : DEFAULT_PREFS.mode,
   };
 }
 

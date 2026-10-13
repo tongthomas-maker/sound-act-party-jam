@@ -274,7 +274,22 @@
 }
 .si-shake { animation: si-shake 0.35s ease-in-out; }
 
+@keyframes si-fly-up {
+  to { transform: translateY(-120%) rotate(-6deg); opacity: 0; }
+}
+@keyframes si-fly-down {
+  to { transform: translateY(120%) rotate(6deg); opacity: 0; }
+}
+.si-fly-up { animation: si-fly-up 0.23s ease-in forwards; }
+.si-fly-down { animation: si-fly-down 0.23s ease-in forwards; }
+@keyframes si-fire {
+  0%, 100% { background-color: transparent; }
+  50% { background-color: color-mix(in oklab, var(--color-card-orange) 22%, transparent); }
+}
+.si-fire { animation: si-fire 0.8s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
+  .si-fly-up, .si-fly-down, .si-fire,
   .si-flash, .si-confetti, .si-shake,
   .si-flip-out,
   .si-slide-out,
