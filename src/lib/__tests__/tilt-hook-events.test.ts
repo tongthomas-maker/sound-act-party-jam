@@ -178,7 +178,7 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
     sweep(t + 16, 200, 10, 45);
     expect(onDown).not.toHaveBeenCalled();
     await act(async () => {
-      await hook.result.current.requestPermission();
+      await hook.result.current.toggleMotion(); // Flip Controls ON -> iOS prompt
     });
     expect(hook.result.current.permission).toBe("granted");
     t = 10_000;
@@ -189,11 +189,10 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
 
   it("iOS permission denied: state is 'denied', tilt never scores", async () => {
     const { onDown, onUp, hook } = setup({ angle: 90, perm: "denied" });
-    let ok = true;
     await act(async () => {
-      ok = await hook.result.current.requestPermission();
+      await hook.result.current.toggleMotion(); // Flip Controls ON -> user taps Don't Allow
     });
-    expect(ok).toBe(false);
+    expect(hook.result.current.motionOn).toBe(false);
     expect(hook.result.current.permission).toBe("denied");
     const t = arm(10);
     sweep(t + 16, 200, 10, 45);
