@@ -205,3 +205,14 @@ describe("v16 tilt state machine (no WAIT_FOR_RETURN, rebase after lock)", () =>
     expect(run(m, -45, 1599).fire).toBeNull();
   });
 });
+
+import { landscapeSign } from "../../hooks/use-tilt-controls";
+describe("landscape rotation direction", () => {
+  it("DOWN stays GOT IT whichever way the phone is turned sideways", () => {
+    expect(landscapeSign(90)).toBe(1);
+    expect(landscapeSign(0)).toBe(1);
+    expect(landscapeSign(undefined)).toBe(1);
+    expect(landscapeSign(270)).toBe(-1);
+    expect(landscapeSign(-90)).toBe(-1);
+  });
+});
