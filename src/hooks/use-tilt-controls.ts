@@ -118,6 +118,18 @@ export function tiltForOrientation(beta: number, gamma: number, angle: number): 
   }
 }
 
+/** Gamma flips sign between landscape-left (90) and landscape-right (270/-90). */
+export function landscapeSign(angle: number | undefined): 1 | -1 {
+  return angle === 270 || angle === -90 ? -1 : 1;
+}
+
+function screenAngle(): number | undefined {
+  if (typeof window === "undefined") return undefined;
+  const a = window.screen?.orientation?.angle;
+  if (typeof a === "number") return a;
+  return (window as unknown as { orientation?: number }).orientation;
+}
+
 export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Options) {
   const [permission, setPermission] = useState<Permission>("unsupported");
   const [motionOn, setMotionOn] = useState(false);
@@ -232,6 +244,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
     const landscape = isLandscape();
+    const lSign = landscapeSign(screenAngle());
     let calStart = 0,
       sum = 0,
       count = 0,
@@ -269,7 +282,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       const now = Date.now();
       beta = e.beta ?? 0;
       gamma = e.gamma ?? 0;
-      const raw = landscape ? gamma : beta; // single axis, never switch
+      const raw = landscape ? gamma * lSign : beta; // single axis, never switch
       if (lastRaw !== null && now > lastAt) flick = ((raw - lastRaw) * 1000) / (now - lastAt);
       lastRaw = raw;
       lastAt = now;
