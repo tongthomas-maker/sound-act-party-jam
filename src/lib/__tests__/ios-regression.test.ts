@@ -66,11 +66,14 @@ describe("rotation mid-turn (synthetic)", () => {
     expect(stepTilt(m, 30, 100 + HOLD_MS - 1).fire).toBeNull();
   });
 
-  it("DOWN maps to GOT IT on both landscape sides after a flip", () => {
-    const gammaDown = (side: number) => 25 * landscapeSign(side); // raw gamma for physical DOWN
-    for (const side of [90, 270, -90]) {
-      const v = gammaDown(side) * landscapeSign(side);
-      expect(stepTilt(ready(), v, 1000).fire).toBe("correct");
-    }
+  it("landscapeSign mirrors gamma: same physical DOWN gives opposite raw gamma per side", () => {
+    // Physical DOWN reads +25 gamma at 90°, -25 at 270/-90°; both must project to +25.
+    expect(25 * landscapeSign(90)).toBe(25);
+    expect(-25 * landscapeSign(270)).toBe(25);
+    expect(-25 * landscapeSign(-90)).toBe(25);
+    expect(stepTilt(ready(), -25 * landscapeSign(270), 1000).fire).toBe("correct");
+    // un-mirrored reading on the 270 side would wrongly PASS
+    expect(stepTilt(ready(), -25, 1000).fire).toBe("pass");
   });
+
 });

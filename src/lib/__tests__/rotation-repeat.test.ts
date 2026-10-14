@@ -19,7 +19,7 @@ describe("mid-turn rotation (synthetic)", () => {
   it("score earned before rotating is kept; rotation swing itself scores nothing", () => {
     const gate = createInputGate();
     let s = emptyStats();
-    const r = stepTilt(ready(), 25 * landscapeSign(90) * landscapeSign(90), 1000);
+    const r = stepTilt(ready(), 25 * landscapeSign(90), 1000); // raw +25 gamma at 90°
     if (r.fire === "correct" && gate.tryAccept(true, 30)) s = applyAction(s, "got");
     gate.release();
     // rotate 90 -> 270: hook resets machine; the big swing must not fire
@@ -34,7 +34,7 @@ describe("mid-turn rotation (synthetic)", () => {
 
   it("after rotating to the other side, DOWN still scores GOT IT! once", () => {
     let m = ready(3000);
-    const raw = 25 * landscapeSign(270); // physical DOWN on 270 side
+    const raw = -25; // physical DOWN on 270 side reads negative gamma
     const r = stepTilt(m, raw * landscapeSign(270), 4000);
     expect(r.fire).toBe("correct");
     m = r.machine;
