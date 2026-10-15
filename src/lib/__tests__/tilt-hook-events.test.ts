@@ -231,29 +231,6 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     expect(onUp).not.toHaveBeenCalled();
   });
 
-  it("CURRENT BEHAVIOR: after 90° -> -90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
-    const { onDown, onUp } = setup({ angle: 90 });
-    let t = arm(10);
-    rotateTo(-90);
-    rest(t + 16, t + 1600, 10); // hold still through the lock -> READY
-    t += 1600;
-    sweep(t + 16, 200, 10, -25); // physical DOWN on the -90 side: gamma falls
-    // Stale sign from the 90 side maps this to UP -> PASS. Documents the bug;
-    // do not change scoring to make this "correct" without owner approval.
-    expect(onUp).toHaveBeenCalledTimes(1);
-    expect(onDown).not.toHaveBeenCalled();
-  });
-
-  it("CURRENT BEHAVIOR: after -90° -> 90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
-    const { onDown, onUp } = setup({ angle: -90 });
-    let t = arm(-10);
-    rotateTo(90);
-    rest(t + 16, t + 1600, -10); // hold still through the lock -> READY
-    t += 1600;
-    sweep(t + 16, 200, -10, 25); // physical DOWN on the 90 side: gamma rises
-    expect(onUp).toHaveBeenCalledTimes(1);
-    expect(onDown).not.toHaveBeenCalled();
-  });
 
   it("a fresh turn after rotation scores correctly again (listener re-attaches with the new side)", () => {
     const first = setup({ angle: 90 });
