@@ -244,7 +244,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
     const landscape = isLandscape();
-    const lSign = landscapeSign(screenAngle());
+    let lSign = landscapeSign(screenAngle());
     let calStart = 0,
       sum = 0,
       count = 0,
@@ -330,8 +330,26 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
       else if (r.fire === "pass") cbs.current.onUp(); // UP = PASS
     };
 
+    /* Mid-turn 180° rotation fix: re-read which landscape side the phone is
+       on and restart calibration, so DOWN stays GOT IT! on the new side. */
+    const onRotate = () => {
+      lSign = landscapeSign(screenAngle());
+      calStart = 0;
+      sum = 0;
+      count = 0;
+      calibrated = false;
+      rebase = 0;
+      delta = 0;
+      m = initialTiltMachine();
+    };
+    window.addEventListener("orientationchange", onRotate);
+    window.screen?.orientation?.addEventListener?.("change", onRotate);
     window.addEventListener("deviceorientation", onOrient);
-    return () => window.removeEventListener("deviceorientation", onOrient);
+    return () => {
+      window.removeEventListener("orientationchange", onRotate);
+      window.screen?.orientation?.removeEventListener?.("change", onRotate);
+      window.removeEventListener("deviceorientation", onOrient);
+    };
   }, [enabled, motionOn, permission, recalibrate]);
 
   const persistDir = () => {

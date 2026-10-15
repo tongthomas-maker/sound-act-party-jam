@@ -207,11 +207,9 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
  * a new turn). These tests DOCUMENT current behavior; they must not be
  * "fixed" by changing scoring without owner approval.
  *
- * Known behavior: the orientation effect captures `landscapeSign` once when
- * the listener attaches and does not re-run on rotation. After a 180° flip
- * the sign is stale, so a physical DOWN tilt on the new side is currently
- * scored as PASS (and vice versa) until the next turn re-attaches the
- * listener. The rotation swing itself still never scores (600ms lock).
+ * Fixed behavior: on orientationchange the hook re-reads `landscapeSign` and
+ * restarts calibration, so DOWN stays GOT IT! on the new side. The rotation
+ * swing itself still never scores (600ms lock + recalibration).
  */
 describe("mid-card 180° landscape rotation (documents current behavior)", () => {
   function rotateTo(angle: number) {
@@ -231,29 +229,6 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     expect(onUp).not.toHaveBeenCalled();
   });
 
-  it("CURRENT BEHAVIOR: after 90° -> -90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
-    const { onDown, onUp } = setup({ angle: 90 });
-    let t = arm(10);
-    rotateTo(-90);
-    rest(t + 16, t + 1600, 10); // hold still through the lock -> READY
-    t += 1600;
-    sweep(t + 16, 200, 10, -25); // physical DOWN on the -90 side: gamma falls
-    // Stale sign from the 90 side maps this to UP -> PASS. Documents the bug;
-    // do not change scoring to make this "correct" without owner approval.
-    expect(onUp).toHaveBeenCalledTimes(1);
-    expect(onDown).not.toHaveBeenCalled();
-  });
-
-  it("CURRENT BEHAVIOR: after -90° -> 90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
-    const { onDown, onUp } = setup({ angle: -90 });
-    let t = arm(-10);
-    rotateTo(90);
-    rest(t + 16, t + 1600, -10); // hold still through the lock -> READY
-    t += 1600;
-    sweep(t + 16, 200, -10, 25); // physical DOWN on the 90 side: gamma rises
-    expect(onUp).toHaveBeenCalledTimes(1);
-    expect(onDown).not.toHaveBeenCalled();
-  });
 
   it("a fresh turn after rotation scores correctly again (listener re-attaches with the new side)", () => {
     const first = setup({ angle: 90 });
@@ -271,12 +246,11 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
 void now;
 
 /**
- * PROPOSED-FIX expectations (skipped until the owner approves the fix).
- * Fix: inside the gesture effect, on orientationchange re-read
- * landscapeSign(screenAngle()) and restart the 800ms calibration.
- * Remove `.skip` and the CURRENT BEHAVIOR tests above when applying it.
+ * EXPECTED-BEHAVIOR tests for the applied fix: on orientationchange the
+ * gesture effect re-reads landscapeSign(screenAngle()) and restarts the
+ * 800ms calibration, so mid-card 180° rotation keeps DOWN = GOT IT!.
  */
-describe.skip("PROPOSED FIX: mid-card 180° rotation keeps DOWN = GOT IT!", () => {
+describe("mid-card 180° rotation keeps DOWN = GOT IT! (fix applied)", () => {
   function rotateTo(angle: number) {
     Object.defineProperty(window, "orientation", { value: angle, configurable: true });
     act(() => {
