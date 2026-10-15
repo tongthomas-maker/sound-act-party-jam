@@ -201,4 +201,71 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
     expect(onUp).not.toHaveBeenCalled();
   });
 });
+
+/**
+ * Mid-card 180° landscape rotation (flip the phone to the other side without
+ * a new turn). These tests DOCUMENT current behavior; they must not be
+ * "fixed" by changing scoring without owner approval.
+ *
+ * Known behavior: the orientation effect captures `landscapeSign` once when
+ * the listener attaches and does not re-run on rotation. After a 180° flip
+ * the sign is stale, so a physical DOWN tilt on the new side is currently
+ * scored as PASS (and vice versa) until the next turn re-attaches the
+ * listener. The rotation swing itself still never scores (600ms lock).
+ */
+describe("mid-card 180° landscape rotation (documents current behavior)", () => {
+  function rotateTo(angle: number) {
+    Object.defineProperty(window, "orientation", { value: angle, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+  }
+
+  it("the rotation swing itself never scores after a 180° flip", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    const t = arm(10);
+    rotateTo(-90);
+    // big gamma swing while turning the phone end-over-end, within the 600ms lock
+    sweep(t + 16, 400, 10, -70);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("CURRENT BEHAVIOR: after 90° -> -90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    let t = arm(10);
+    rotateTo(-90);
+    rest(t + 16, t + 1600, 10); // hold still through the lock -> READY
+    t += 1600;
+    sweep(t + 16, 200, 10, -25); // physical DOWN on the -90 side: gamma falls
+    // Stale sign from the 90 side maps this to UP -> PASS. Documents the bug;
+    // do not change scoring to make this "correct" without owner approval.
+    expect(onUp).toHaveBeenCalledTimes(1);
+    expect(onDown).not.toHaveBeenCalled();
+  });
+
+  it("CURRENT BEHAVIOR: after -90° -> 90° mid-card, physical DOWN on the new side scores PASS (stale sign)", () => {
+    const { onDown, onUp } = setup({ angle: -90 });
+    let t = arm(-10);
+    rotateTo(90);
+    rest(t + 16, t + 1600, -10); // hold still through the lock -> READY
+    t += 1600;
+    sweep(t + 16, 200, -10, 25); // physical DOWN on the 90 side: gamma rises
+    expect(onUp).toHaveBeenCalledTimes(1);
+    expect(onDown).not.toHaveBeenCalled();
+  });
+
+  it("a fresh turn after rotation scores correctly again (listener re-attaches with the new side)", () => {
+    const first = setup({ angle: 90 });
+    const t = arm(10);
+    rotateTo(-90);
+    sweep(t + 16, 400, 10, -70);
+    first.hook.unmount(); // turn ends -> listener removed
+    const second = setup({ angle: -90 }); // next turn: fresh listener, fresh sign
+    const t2 = arm(-10);
+    sweep(t2 + 16, 200, -10, -45); // physical DOWN on -90 side
+    expect(second.onDown).toHaveBeenCalledTimes(1);
+    expect(second.onUp).not.toHaveBeenCalled();
+  });
+});
 void now;
