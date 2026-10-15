@@ -244,7 +244,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
     const landscape = isLandscape();
-    const lSign = landscapeSign(screenAngle());
+    let lSign = landscapeSign(screenAngle());
     let calStart = 0,
       sum = 0,
       count = 0,
