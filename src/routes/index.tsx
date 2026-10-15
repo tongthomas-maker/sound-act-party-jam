@@ -469,7 +469,7 @@ function SoundItGame() {
       type="button"
       aria-label="Got it, plus one point"
       onClick={() => advance("got")}
-      className={`rounded-3xl bg-card-lime font-black text-black transition-transform duration-150 active:scale-[0.97] ${cls} ${
+      className={`touch-manipulation rounded-3xl bg-card-lime font-black text-black transition-transform duration-150 active:scale-[0.97] ${cls} ${
         actionFeedback === "got" ? "scale-[1.04] brightness-125" : ""
       }`}
       style={{ fontFamily: "var(--font-display)" }}
@@ -482,7 +482,7 @@ function SoundItGame() {
       type="button"
       aria-label="Pass, no point"
       onClick={() => advance("pass")}
-      className={`rounded-3xl bg-white/12 font-black text-white/80 transition-transform duration-150 active:scale-[0.97] ${cls} ${
+      className={`touch-manipulation rounded-3xl bg-white/12 font-black text-white/80 transition-transform duration-150 active:scale-[0.97] ${cls} ${
         actionFeedback === "pass" ? "scale-[1.04] brightness-125" : ""
       }`}
       style={{ fontFamily: "var(--font-display)" }}
