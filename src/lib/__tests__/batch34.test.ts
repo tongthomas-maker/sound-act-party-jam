@@ -15,9 +15,18 @@ describe("batch34: legacy roster migration", () => {
   it("skips malformed legacy entries instead of crashing", () => {
     m.set(
       "sound-it:players",
-      JSON.stringify([null, { id: "1", name: "  Ann  " }, { id: 2, name: "x" }, { id: "3", name: " ", active: true }, { id: "4", name: "Bo", active: false }]),
+      JSON.stringify([
+        null,
+        { id: "1", name: "  Ann  " },
+        { id: 2, name: "x" },
+        { id: "3", name: " ", active: true },
+        { id: "4", name: "Bo", active: false },
+      ]),
     );
-    expect(loadRoster()).toEqual([{ id: "1", name: "Ann" }, { id: "4", name: "Bo" }]);
+    expect(loadRoster()).toEqual([
+      { id: "1", name: "Ann" },
+      { id: "4", name: "Bo" },
+    ]);
     expect(loadSelection()).toEqual(["1"]);
   });
 });
