@@ -269,3 +269,38 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
   });
 });
 void now;
+
+/**
+ * PROPOSED-FIX expectations (skipped until the owner approves the fix).
+ * Fix: inside the gesture effect, on orientationchange re-read
+ * landscapeSign(screenAngle()) and restart the 800ms calibration.
+ * Remove `.skip` and the CURRENT BEHAVIOR tests above when applying it.
+ */
+describe.skip("PROPOSED FIX: mid-card 180° rotation keeps DOWN = GOT IT!", () => {
+  function rotateTo(angle: number) {
+    Object.defineProperty(window, "orientation", { value: angle, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+  }
+  it("90° -> -90°: physical DOWN on new side = GOT IT!", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    let t = arm(10);
+    rotateTo(-90);
+    rest(t + 16, t + 1800, -10); // recalibrate + hold on the new side
+    t += 1800;
+    sweep(t + 16, 200, -10, -45);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+  it("-90° -> 90°: physical UP on new side = PASS", () => {
+    const { onDown, onUp } = setup({ angle: -90 });
+    let t = arm(-10);
+    rotateTo(90);
+    rest(t + 16, t + 1800, 10);
+    t += 1800;
+    sweep(t + 16, 200, 10, -25);
+    expect(onUp).toHaveBeenCalledTimes(1);
+    expect(onDown).not.toHaveBeenCalled();
+  });
+});
