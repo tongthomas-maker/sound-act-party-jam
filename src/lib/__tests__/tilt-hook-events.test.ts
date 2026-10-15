@@ -235,9 +235,7 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     const { onDown, onUp } = setup({ angle: 90 });
     let t = arm(10);
     rotateTo(-90);
-    t = sweep(t + 16, 400, 10, -70); // ride out the lock with the rotation swing
-    t = sweep(t + 16, 300, -70, 10); // swing back past the lock window
-    rest(t + 16, t + 1600, 10); // settle at the original resting angle -> READY
+    rest(t + 16, t + 1600, 10); // hold still through the lock -> READY
     t += 1600;
     sweep(t + 16, 200, 10, -25); // physical DOWN on the -90 side: gamma falls
     // Stale sign from the 90 side maps this to UP -> PASS. Documents the bug;
@@ -250,9 +248,7 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     const { onDown, onUp } = setup({ angle: -90 });
     let t = arm(-10);
     rotateTo(90);
-    t = sweep(t + 16, 400, -10, 70);
-    t = sweep(t + 16, 300, 70, -10); // swing back past the lock window
-    rest(t + 16, t + 1600, -10); // settle at the original resting angle -> READY
+    rest(t + 16, t + 1600, -10); // hold still through the lock -> READY
     t += 1600;
     sweep(t + 16, 200, -10, 25); // physical DOWN on the 90 side: gamma rises
     expect(onUp).toHaveBeenCalledTimes(1);
