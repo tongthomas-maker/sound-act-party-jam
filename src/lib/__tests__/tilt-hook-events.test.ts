@@ -408,6 +408,9 @@ describe("edge cases batch 2: permission fallback + orientation rearm", () => {
   });
 
   it("portrait (angle 0): beta axis drives scoring, gamma-only waggle scores nothing", () => {
+    // jsdom defaults to 1024x768 (landscape); force portrait dimensions
+    Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
     const { onDown, onUp } = setup({ angle: 0 });
     // calibrate + hold with beta rest 10, gamma 0
     for (let t = 0; t <= 1800; t += 16) emit(t, 0, 10);
