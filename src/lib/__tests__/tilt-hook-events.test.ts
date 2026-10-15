@@ -200,5 +200,13 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
     expect(onDown).not.toHaveBeenCalled();
     expect(onUp).not.toHaveBeenCalled();
   });
-});
-void now;
+  it("rotation event: the rotation swing itself (within 600ms) does not score", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    const t = arm(10);
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+    sweep(t + 16, 400, 10, 80);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+  });
