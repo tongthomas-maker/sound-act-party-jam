@@ -243,6 +243,99 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     expect(second.onUp).not.toHaveBeenCalled();
   });
 });
+/**
+ * Edge cases: permission lifecycle, rapid repeated 180° flips, and
+ * rearm/debounce behavior. These document and lock in current behavior;
+ * scoring rules (18° trigger, DOWN = GOT IT!, UP = PASS) are unchanged.
+ */
+describe("edge cases: permission, rapid flips, rearm/debounce", () => {
+  function rotateTo(angle: number) {
+    Object.defineProperty(window, "orientation", { value: angle, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+  }
+
+  it("permission granted mid-session: tilt only scores after grant, not before", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "granted" });
+    // before grant: full flick is ignored
+    const t0 = arm(10);
+    sweep(t0 + 16, 200, 10, 45);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(hook.result.current.permission).toBe("granted");
+    // after grant: fresh calibration, then DOWN scores once
+    const t = 20_000;
+    rest(t, t + 1800, 10);
+    sweep(t + 1816, 200, 10, 45);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("Flip Controls toggled OFF mid-turn: tilt stops scoring immediately", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "granted" });
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // ON
+    });
+    const t = 30_000;
+    rest(t, t + 1800, 10);
+    sweep(t + 1816, 200, 10, 45);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // OFF
+    });
+    expect(hook.result.current.motionOn).toBe(false);
+    const t2 = t + 5000;
+    sweep(t2, 200, 10, 45);
+    sweep(t2 + 400, 200, 10, -25);
+    expect(onDown).toHaveBeenCalledTimes(1); // no new score
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("rapid 180° flips (90 -> -90 -> 90 within 1s): no swing scores, direction correct after settling", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    let t = arm(10);
+    rotateTo(-90);
+    sweep(t + 16, 300, 10, -60); // flip swing
+    rotateTo(90);
+    sweep(t + 332, 300, -60, 20); // flip back swing
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+    // settle on the original side, then DOWN scores again
+    rest(t + 700, t + 2500, 10);
+    t += 2500;
+    sweep(t + 16, 200, 10, 45);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("rearm: after GOT IT!, holding still ~800ms re-arms; a flick before rearm is ignored", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    let t = arm(10);
+    t = sweep(t + 16, 150, 10, 40); // GOT IT! #1, LOCKED 600ms
+    // flick back up right as the lock expires but before hold-still rearm completes
+    sweep(t + 620, 150, 40, 5);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+    // now hold still to rearm, then UP scores
+    rest(t + 800, t + 1800, 5);
+    sweep(t + 1816, 200, 5, -30);
+    expect(onUp).toHaveBeenCalledTimes(1);
+    expect(onDown).toHaveBeenCalledTimes(1);
+  });
+
+  it("debounce: a single fast DOWN flick produces exactly one GOT IT! even with 60Hz samples past trigger", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    const t = arm(10);
+    // fast flick: many consecutive samples above 18° within ~130ms
+    sweep(t + 16, 130, 10, 60);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+});
 void now;
 
 /**
