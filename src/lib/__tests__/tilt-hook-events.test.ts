@@ -337,6 +337,95 @@ describe("edge cases: permission, rapid flips, rearm/debounce", () => {
     expect(onUp).not.toHaveBeenCalled();
   });
 });
+/**
+ * Second edge-case batch: permission fallback paths and orientation rearm
+ * gaps not covered above. Deterministic, offline; no scoring changes.
+ */
+describe("edge cases batch 2: permission fallback + orientation rearm", () => {
+  function rotateTo(angle: number) {
+    Object.defineProperty(window, "orientation", { value: angle, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+  }
+
+  it("permission denied, then Flip Controls toggled again: still denied, tilt never scores", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "denied" });
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(hook.result.current.permission).toBe("denied");
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // retry -> denied again
+    });
+    expect(hook.result.current.permission).toBe("denied");
+    expect(hook.result.current.motionOn).toBe(false);
+    const t = arm(10);
+    sweep(t + 16, 200, 10, 45);
+    sweep(t + 400, 200, 10, -25);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("Flip Controls OFF then ON again: listener re-attaches and recalibrates before scoring", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "granted" });
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // ON
+    });
+    let t = 40_000;
+    rest(t, t + 1800, 10);
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // OFF
+    });
+    await act(async () => {
+      await hook.result.current.toggleMotion(); // ON again
+    });
+    // movement during the fresh 800ms calibration window must not score
+    sweep(t + 2000, 400, 10, 50);
+    expect(onDown).not.toHaveBeenCalled();
+    // after recalibrating at the new rest angle, DOWN scores once
+    t += 2500;
+    rest(t, t + 1800, 12);
+    sweep(t + 1816, 200, 12, 47);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("rotation during the 600ms LOCKED phase: lock still suppresses the swing, rearm works after", () => {
+    const { onDown, onUp } = setup({ angle: 90 });
+    let t = arm(10);
+    t = sweep(t + 16, 150, 10, 40); // GOT IT!, LOCKED
+    rotateTo(-90); // rotation arrives while locked
+    sweep(t + 16, 300, 40, -50); // big swing inside lock window
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+    // settle on the new side; DOWN on -90 side scores again
+    rest(t + 400, t + 2200, -10);
+    t += 2200;
+    sweep(t + 16, 200, -10, -45);
+    expect(onDown).toHaveBeenCalledTimes(2);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("portrait (angle 0): beta axis drives scoring, gamma-only waggle scores nothing", () => {
+    // jsdom defaults to 1024x768 (landscape); force portrait dimensions
+    Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
+    const { onDown, onUp } = setup({ angle: 0 });
+    // calibrate + hold with beta rest 10, gamma 0
+    for (let t = 0; t <= 1800; t += 16) emit(t, 0, 10);
+    // waggle gamma hard (wrong axis in portrait): nothing scores
+    for (let t = 1816; t <= 2400; t += 16) emit(t, (t / 16) % 2 ? 40 : -40, 10);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+    // beta DOWN flick scores once
+    let t = 2416;
+    for (let i = 0; i <= 12; i++) emit(t + i * 16, 0, 10 + (35 * i) / 12);
+    t += 12 * 16;
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+});
 void now;
 
 /**
