@@ -52,11 +52,18 @@ export function loadRoster(): Player[] {
   // migrate old shape { id, name, active }
   const legacy = read<(Player & { active?: boolean })[]>(LEGACY_KEY);
   if (Array.isArray(legacy) && legacy.length) {
-    const migrated = legacy.map((p) => ({ id: p.id, name: p.name }));
+    const seen = new Set<string>();
+    const valid = legacy.filter(
+      (p): p is Player & { active?: boolean } =>
+        !!p && typeof p.id === "string" && !!p.id && typeof p.name === "string",
+    );
+    const migrated = valid
+      .map((p) => ({ id: p.id, name: cleanName(p.name) }))
+      .filter((p) => p.name && !seen.has(p.id) && (seen.add(p.id), true));
     write(ROSTER_KEY, migrated);
     write(
       SELECTION_KEY,
-      legacy.filter((p) => p.active !== false).map((p) => p.id),
+      valid.filter((p) => p.active !== false && seen.has(p.id)).map((p) => p.id),
     );
     return migrated;
   }

@@ -30,7 +30,8 @@ export function buildPlayPool(mode: PlayMode, categories: CategoryId[]): PlayCar
       })),
     );
   }
-  const all = categories.length === CATEGORIES.length ? "all" : categories;
+  const unique = [...new Set(categories)];
+  const all = unique.length === CATEGORIES.length ? "all" : unique;
   return filterCards(mode, all).map((c) => ({
     id: c.id,
     prompt: c.prompt,
