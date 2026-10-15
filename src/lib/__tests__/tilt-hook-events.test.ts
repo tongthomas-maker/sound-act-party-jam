@@ -236,9 +236,10 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     let t = arm(10);
     rotateTo(-90);
     t = sweep(t + 16, 400, 10, -70); // ride out the lock with the rotation swing
-    rest(t + 16, t + 1600, -10); // settle: recalibrate + hold still -> READY
+    t = sweep(t + 16, 300, -70, 10); // swing back past the lock window
+    rest(t + 16, t + 1600, 10); // settle at the original resting angle -> READY
     t += 1600;
-    sweep(t + 16, 200, -10, -45); // physical DOWN on the -90 side: gamma falls
+    sweep(t + 16, 200, 10, -25); // physical DOWN on the -90 side: gamma falls
     // Stale sign from the 90 side maps this to UP -> PASS. Documents the bug;
     // do not change scoring to make this "correct" without owner approval.
     expect(onUp).toHaveBeenCalledTimes(1);
@@ -250,9 +251,10 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     let t = arm(-10);
     rotateTo(90);
     t = sweep(t + 16, 400, -10, 70);
-    rest(t + 16, t + 1600, 10);
+    t = sweep(t + 16, 300, 70, -10); // swing back past the lock window
+    rest(t + 16, t + 1600, -10); // settle at the original resting angle -> READY
     t += 1600;
-    sweep(t + 16, 200, 10, 45); // physical DOWN on the 90 side: gamma rises
+    sweep(t + 16, 200, -10, 25); // physical DOWN on the 90 side: gamma rises
     expect(onUp).toHaveBeenCalledTimes(1);
     expect(onDown).not.toHaveBeenCalled();
   });
