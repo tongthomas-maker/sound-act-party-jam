@@ -243,7 +243,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
   useEffect(() => {
     recalibrate();
     if (!enabled || !motionOn || permission !== "granted") return;
-    const landscape = isLandscape();
+    let landscape = isLandscape();
     let lSign = landscapeSign(screenAngle());
     let calStart = 0,
       sum = 0,
@@ -333,6 +333,7 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
     /* Mid-turn 180° rotation fix: re-read which landscape side the phone is
        on and restart calibration, so DOWN stays GOT IT! on the new side. */
     const onRotate = () => {
+      landscape = isLandscape();
       lSign = landscapeSign(screenAngle());
       calStart = 0;
       sum = 0;
