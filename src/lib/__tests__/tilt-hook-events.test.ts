@@ -312,17 +312,18 @@ describe("edge cases: permission, rapid flips, rearm/debounce", () => {
     expect(onUp).not.toHaveBeenCalled();
   });
 
-  it("rearm: after GOT IT!, holding still ~800ms re-arms; a flick before rearm is ignored", () => {
+  it("rearm/debounce: flicks inside the 600ms lock are ignored; after lock + rebase, opposite flick scores from the new baseline", () => {
     const { onDown, onUp } = setup({ angle: 90 });
     let t = arm(10);
     t = sweep(t + 16, 150, 10, 40); // GOT IT! #1, LOCKED 600ms
-    // flick back up right as the lock expires but before hold-still rearm completes
-    sweep(t + 620, 150, 40, 5);
+    // flick back up INSIDE the lock: ignored
+    sweep(t + 100, 150, 40, 5);
     expect(onDown).toHaveBeenCalledTimes(1);
     expect(onUp).not.toHaveBeenCalled();
-    // now hold still to rearm, then UP scores
-    rest(t + 800, t + 1800, 5);
-    sweep(t + 1816, 200, 5, -30);
+    // hold still through lock expiry: baseline rebases to the current angle
+    rest(t + 300, t + 1200, 5);
+    // after the lock, an UP flick from the rebased baseline scores once
+    sweep(t + 1216, 200, 5, -30);
     expect(onUp).toHaveBeenCalledTimes(1);
     expect(onDown).toHaveBeenCalledTimes(1);
   });
