@@ -461,3 +461,24 @@ describe("mid-card 180° rotation keeps DOWN = GOT IT! (fix applied)", () => {
     expect(onDown).not.toHaveBeenCalled();
   });
 });
+
+describe("portrait -> landscape rotation mid-turn (axis re-evaluation)", () => {
+  it("after rotating from portrait to landscape, DOWN on gamma scores GOT IT!", () => {
+    Object.defineProperty(window, "innerWidth", { value: 390, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 844, configurable: true });
+    const { onDown, onUp } = setup({ angle: 0 });
+    rest(0, 400, 0);
+    Object.defineProperty(window, "orientation", { value: 90, configurable: true });
+    Object.defineProperty(window, "innerWidth", { value: 844, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 390, configurable: true });
+    act(() => {
+      window.dispatchEvent(new Event("orientationchange"));
+    });
+    rest(1000, 2800, 10);
+    sweep(2816, 200, 10, 45);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+    Object.defineProperty(window, "innerWidth", { value: 1024, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 768, configurable: true });
+  });
+});
