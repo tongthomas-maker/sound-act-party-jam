@@ -207,11 +207,9 @@ describe("useTiltControls with dispatched deviceorientation events", () => {
  * a new turn). These tests DOCUMENT current behavior; they must not be
  * "fixed" by changing scoring without owner approval.
  *
- * Known behavior: the orientation effect captures `landscapeSign` once when
- * the listener attaches and does not re-run on rotation. After a 180° flip
- * the sign is stale, so a physical DOWN tilt on the new side is currently
- * scored as PASS (and vice versa) until the next turn re-attaches the
- * listener. The rotation swing itself still never scores (600ms lock).
+ * Fixed behavior: on orientationchange the hook re-reads `landscapeSign` and
+ * restarts calibration, so DOWN stays GOT IT! on the new side. The rotation
+ * swing itself still never scores (600ms lock + recalibration).
  */
 describe("mid-card 180° landscape rotation (documents current behavior)", () => {
   function rotateTo(angle: number) {
@@ -248,12 +246,11 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
 void now;
 
 /**
- * PROPOSED-FIX expectations (skipped until the owner approves the fix).
- * Fix: inside the gesture effect, on orientationchange re-read
- * landscapeSign(screenAngle()) and restart the 800ms calibration.
- * Remove `.skip` and the CURRENT BEHAVIOR tests above when applying it.
+ * EXPECTED-BEHAVIOR tests for the applied fix: on orientationchange the
+ * gesture effect re-reads landscapeSign(screenAngle()) and restarts the
+ * 800ms calibration, so mid-card 180° rotation keeps DOWN = GOT IT!.
  */
-describe.skip("PROPOSED FIX: mid-card 180° rotation keeps DOWN = GOT IT!", () => {
+describe("mid-card 180° rotation keeps DOWN = GOT IT! (fix applied)", () => {
   function rotateTo(angle: number) {
     Object.defineProperty(window, "orientation", { value: angle, configurable: true });
     act(() => {
