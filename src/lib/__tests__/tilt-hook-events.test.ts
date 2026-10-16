@@ -19,8 +19,9 @@ function setup({
   Object.defineProperty(navigator, "userAgent", { value: ua, configurable: true });
   class FakeOrientationEvent extends Event {}
   if (perm) {
-    (FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission =
-      () => Promise.resolve(perm);
+    (
+      FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }
+    ).requestPermission = () => Promise.resolve(perm);
   }
   (window as unknown as { DeviceOrientationEvent: unknown }).DeviceOrientationEvent =
     FakeOrientationEvent;
@@ -229,7 +230,6 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     expect(onUp).not.toHaveBeenCalled();
   });
 
-
   it("a fresh turn after rotation scores correctly again (listener re-attaches with the new side)", () => {
     const first = setup({ angle: 90 });
     const t = arm(10);
@@ -364,6 +364,40 @@ describe("edge cases batch 2: permission fallback + orientation rearm", () => {
     sweep(t + 16, 200, 10, 45);
     sweep(t + 400, 200, 10, -25);
     expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
+  it("retry after denial can grant permission, with no tilt scoring before rearm", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "denied" });
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(hook.result.current.permission).toBe("denied");
+    expect(hook.result.current.motionOn).toBe(false);
+    const t = arm(10);
+    sweep(t + 16, 200, 10, 45);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+
+    // Model a browser allowing the next user-initiated permission request.
+    const request = vi.fn().mockResolvedValue("granted");
+    Object.defineProperty(window.DeviceOrientationEvent, "requestPermission", {
+      value: request,
+      configurable: true,
+    });
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.permission).toBe("granted");
+    expect(hook.result.current.motionOn).toBe(true);
+
+    sweep(10_000, 400, 10, 45); // fresh calibration must not score
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+    rest(10_416, 12_400, 45);
+    sweep(12_416, 200, 45, 80);
+    expect(onDown).toHaveBeenCalledTimes(1);
     expect(onUp).not.toHaveBeenCalled();
   });
 
