@@ -23,12 +23,18 @@ function harness({ perm, secondsLeft = 30 }: { perm?: Perm; secondsLeft?: number
   Object.defineProperty(navigator, "userAgent", { value: "Mozilla/5.0 (X11)", configurable: true });
   class FakeOrientationEvent extends Event {}
   if (perm)
-    (FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission =
-      () => Promise.resolve(perm);
+    (
+      FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }
+    ).requestPermission = () => Promise.resolve(perm);
   (window as unknown as { DeviceOrientationEvent: unknown }).DeviceOrientationEvent =
     FakeOrientationEvent;
 
-  const round = { left: secondsLeft, stats: emptyStats() as TurnStats, log: [] as Action[], buzzers: 0 };
+  const round = {
+    left: secondsLeft,
+    stats: emptyStats() as TurnStats,
+    log: [] as Action[],
+    buzzers: 0,
+  };
   const gate = createInputGate();
   const score = (a: Action) => {
     if (!gate.tryAccept(true, round.left)) return false;
