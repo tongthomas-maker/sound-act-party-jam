@@ -19,8 +19,9 @@ function setup({
   Object.defineProperty(navigator, "userAgent", { value: ua, configurable: true });
   class FakeOrientationEvent extends Event {}
   if (perm) {
-    (FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }).requestPermission =
-      () => Promise.resolve(perm);
+    (
+      FakeOrientationEvent as unknown as { requestPermission: () => Promise<string> }
+    ).requestPermission = () => Promise.resolve(perm);
   }
   (window as unknown as { DeviceOrientationEvent: unknown }).DeviceOrientationEvent =
     FakeOrientationEvent;
@@ -228,7 +229,6 @@ describe("mid-card 180° landscape rotation (documents current behavior)", () =>
     expect(onDown).not.toHaveBeenCalled();
     expect(onUp).not.toHaveBeenCalled();
   });
-
 
   it("a fresh turn after rotation scores correctly again (listener re-attaches with the new side)", () => {
     const first = setup({ angle: 90 });
