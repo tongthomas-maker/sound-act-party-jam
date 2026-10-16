@@ -79,10 +79,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Sound It! — The Pass-the-Phone Party Game" },
-      { name: "description", content: "Make sounds, act it out, and guess before the buzzer in Sound It!" },
+      {
+        name: "description",
+        content: "Make sounds, act it out, and guess before the buzzer in Sound It!",
+      },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Sound It! — The Pass-the-Phone Party Game" },
-      { property: "og:description", content: "Make sounds, act it out, and guess before the buzzer in Sound It!" },
+      {
+        property: "og:description",
+        content: "Make sounds, act it out, and guess before the buzzer in Sound It!",
+      },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@Lovable" },
