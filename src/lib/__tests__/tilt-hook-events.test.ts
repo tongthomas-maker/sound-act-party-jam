@@ -367,6 +367,40 @@ describe("edge cases batch 2: permission fallback + orientation rearm", () => {
     expect(onUp).not.toHaveBeenCalled();
   });
 
+  it("retry after denial can grant permission, with no tilt scoring before rearm", async () => {
+    const { onDown, onUp, hook } = setup({ angle: 90, perm: "denied" });
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(hook.result.current.permission).toBe("denied");
+    expect(hook.result.current.motionOn).toBe(false);
+    const t = arm(10);
+    sweep(t + 16, 200, 10, 45);
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+
+    // Model a browser allowing the next user-initiated permission request.
+    const request = vi.fn().mockResolvedValue("granted");
+    Object.defineProperty(window.DeviceOrientationEvent, "requestPermission", {
+      value: request,
+      configurable: true,
+    });
+    await act(async () => {
+      await hook.result.current.toggleMotion();
+    });
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(hook.result.current.permission).toBe("granted");
+    expect(hook.result.current.motionOn).toBe(true);
+
+    sweep(10_000, 400, 10, 45); // fresh calibration must not score
+    expect(onDown).not.toHaveBeenCalled();
+    expect(onUp).not.toHaveBeenCalled();
+    rest(10_416, 12_400, 45);
+    sweep(12_416, 200, 45, 80);
+    expect(onDown).toHaveBeenCalledTimes(1);
+    expect(onUp).not.toHaveBeenCalled();
+  });
+
   it("Flip Controls OFF then ON again: listener re-attaches and recalibrates before scoring", async () => {
     const { onDown, onUp, hook } = setup({ angle: 90, perm: "granted" });
     await act(async () => {

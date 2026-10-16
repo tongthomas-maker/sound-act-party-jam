@@ -459,7 +459,7 @@ function SoundItGame() {
   const flipLabel = tilt.motionOn
     ? "📱 Flip on — down = got it, up = pass"
     : tilt.permission === "denied"
-      ? "📱 Motion blocked — use buttons"
+      ? "📱 Motion blocked — tap to retry or use GOT IT! / PASS"
       : prefs.flip && tilt.permission === "needs-permission"
         ? "📱 Tap to allow flip controls"
         : "📱 Flip controls off";
