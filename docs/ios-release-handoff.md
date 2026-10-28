@@ -9,6 +9,7 @@ Prepared 2026-10-28, release batch 04–09. Readiness documentation only: no nat
 - Fresh Chromium session: added two players through the UI, chose 30s, started a turn, tapped GOT IT! then PASS, waited for TIME!; summary read 1 point, 1 passed, best streak 1, and next-player handoff. No page errors. This is not physical iOS verification or an audio audibility check.
 - No proven source-level release-blocking gameplay defect was reproduced; no application code changed. Existing V1 scoring, turn order, categories, timers, reset and visuals remain intact.
 - Manual production builds and TypeScript checks were **not executed**: environment instructions reserve them for the automatic verifier. Automatic build status must be reported separately; a successful test/lint/browser run does not establish a production build or typecheck result.
+- Automatic verifier log inspected after edits: **build OK**, 2026-10-28T04:33:44Z. No independent production-build or explicit TypeScript result is exposed. Dev server reports a non-blocking redundant `vite-tsconfig-paths` plugin warning; configuration was not changed.
 
 ## Native packaging status
 

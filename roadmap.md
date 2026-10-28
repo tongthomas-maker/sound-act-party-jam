@@ -5,6 +5,6 @@
 - [x] Create App Store assets, metadata, privacy, and permissions checklist.
 - [x] Create concise owner iPhone/iPad sound and rotation instructions.
 - [x] Run full automated tests: 138/138 passed across 12 files.
-- [ ] Inspect automatic build evidence; manual production build/typecheck prohibited by environment instructions.
+- [x] Inspect automatic build evidence: build OK at 2026-10-28T04:33:44Z; manual production build/typecheck prohibited by environment instructions.
 - [x] Document exact Apple/TestFlight and physical-device gates; no submission, deployment, or credential changes.
 - [ ] Physical iPhone/iPad and installed-native QA: blocked on device testing and a native package outside this batch.
