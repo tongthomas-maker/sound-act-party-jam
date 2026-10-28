@@ -11,8 +11,9 @@
 
 ## Release batch 04–11 — isolated bundle feasibility
 
-- [ ] Inspect installed TanStack static/SPA options and SSR entry boundaries.
+- [x] Inspect installed TanStack static/SPA options and SSR entry boundaries.
 - [x] Run targeted audio/motion/tilt tests: 50/50 passed across 3 files.
-- [ ] Check cold offline startup and network-independent gameplay/audio/permission behavior in the browser, distinguishing mocks from hardware.
-- [ ] Record whether an isolated static build can actually be tested; do not alter production configuration.
-- [ ] Write feasibility evidence and Mac/Xcode next steps; no native readiness claim or deployment.
+- [x] Check browser behavior: warm offline scoring/audio passed; offline reload failed; mocked grant/deny and fallback exercised.
+- [x] Record static-build constraint: no manual experimental build allowed; no static artifact generated or production config changed.
+- [x] Write feasibility evidence and Mac/Xcode next steps; no native readiness claim or deployment.
+- [ ] Isolated static build/cold-start verification: blocked on a build-capable disposable workspace outside this restricted environment.
