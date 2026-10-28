@@ -29,17 +29,17 @@ No packaging architecture is implemented or selected by this handoff. Capacitor 
 
 ## Apple / TestFlight gate list
 
-| Gate | Evidence / blocker | Responsible next step |
-|---|---|---|
-| Real-device acceptance | iPhone/iPad QA results remain blank | Owner tests both devices; report failures before release |
-| Native artifact | No native project/archive/IPA in repository | Approved packaging work plus macOS/Xcode build |
-| Developer membership | Enrollment, team and agreements unverified | Owner checks Apple Developer → Account; no enrollment attempted |
-| Identity/signing | Bundle ID, team, certificates/profiles unverified | Owner/native packager configures signing later; never paste credentials into chat |
-| SDK/toolchain | Apple currently lists Xcode 26+ and iOS/iPadOS 26+ SDK; minimum target iOS 13+ | Recheck live Apple requirements before creating/uploading an archive; dependencies may require a newer minimum |
-| Store record/assets | App record, screenshots, icon, URLs and rights not verified | Complete `ios-store-checklist.md` |
-| Privacy | Final native traffic/SDK audit and policy/labels absent | Resolve fonts, error reporting, native manifests and disclosures before upload |
-| TestFlight distribution | No processed signed build or invitation verified | After approval: upload/process, resolve export compliance, provide beta description/feedback contact; external beta review may be required |
-| App Review | Acceptance cannot be guaranteed | Document real playable value; assess guideline 4.2, not merely a browser wrapper |
+| Gate                    | Evidence / blocker                                                             | Responsible next step                                                                                                                      |
+| ----------------------- | ------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Real-device acceptance  | iPhone/iPad QA results remain blank                                            | Owner tests both devices; report failures before release                                                                                   |
+| Native artifact         | No native project/archive/IPA in repository                                    | Approved packaging work plus macOS/Xcode build                                                                                             |
+| Developer membership    | Enrollment, team and agreements unverified                                     | Owner checks Apple Developer → Account; no enrollment attempted                                                                            |
+| Identity/signing        | Bundle ID, team, certificates/profiles unverified                              | Owner/native packager configures signing later; never paste credentials into chat                                                          |
+| SDK/toolchain           | Apple currently lists Xcode 26+ and iOS/iPadOS 26+ SDK; minimum target iOS 13+ | Recheck live Apple requirements before creating/uploading an archive; dependencies may require a newer minimum                             |
+| Store record/assets     | App record, screenshots, icon, URLs and rights not verified                    | Complete `ios-store-checklist.md`                                                                                                          |
+| Privacy                 | Final native traffic/SDK audit and policy/labels absent                        | Resolve fonts, error reporting, native manifests and disclosures before upload                                                             |
+| TestFlight distribution | No processed signed build or invitation verified                               | After approval: upload/process, resolve export compliance, provide beta description/feedback contact; external beta review may be required |
+| App Review              | Acceptance cannot be guaranteed                                                | Document real playable value; assess guideline 4.2, not merely a browser wrapper                                                           |
 
 These are readiness gates, not claims that the owner's Apple account is missing. No Apple submission or deployment occurred.
 

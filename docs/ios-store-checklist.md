@@ -17,13 +17,13 @@ Prepared 2026-10-28. Checklist only: no assets generated, public policy publishe
 
 ## Privacy evidence and decisions
 
-| Surface | Observed now | Required final-package check |
-|---|---|---|
-| Players/preferences | `players.ts` and `prefs.ts` use guarded localStorage for roster, selection, settings and completed-game unlock counter | Verify container persistence, uninstall/clear-data behavior, and disclose device-local storage accurately |
-| Gameplay | No account/cloud gameplay backend connected; no AI judging or microphone recording in reviewed game paths | Verify bundled package and all dependencies; do not equate local gameplay with zero external requests |
-| Fonts | Root head loads Google Fonts CSS/font files | Audit network metadata/recipients and licensing; offline asset handling remains a packaging gate |
-| Errors | `reportLovableError` conditionally forwards error/stack/route to injected runtime hooks; comment identifies one hook as editor-preview-only | Inspect final native/published traffic and actual hooks/retention. No evidence here establishes production collection, recipients or consent obligations |
-| Native dependencies | No wrapper/SDK inventory yet | Inspect final SDK privacy manifests/signatures and required-reason API usage; use Apple's accepted reasons only when actually applicable |
+| Surface             | Observed now                                                                                                                                | Required final-package check                                                                                                                             |
+| ------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Players/preferences | `players.ts` and `prefs.ts` use guarded localStorage for roster, selection, settings and completed-game unlock counter                      | Verify container persistence, uninstall/clear-data behavior, and disclose device-local storage accurately                                                |
+| Gameplay            | No account/cloud gameplay backend connected; no AI judging or microphone recording in reviewed game paths                                   | Verify bundled package and all dependencies; do not equate local gameplay with zero external requests                                                    |
+| Fonts               | Root head loads Google Fonts CSS/font files                                                                                                 | Audit network metadata/recipients and licensing; offline asset handling remains a packaging gate                                                         |
+| Errors              | `reportLovableError` conditionally forwards error/stack/route to injected runtime hooks; comment identifies one hook as editor-preview-only | Inspect final native/published traffic and actual hooks/retention. No evidence here establishes production collection, recipients or consent obligations |
+| Native dependencies | No wrapper/SDK inventory yet                                                                                                                | Inspect final SDK privacy manifests/signatures and required-reason API usage; use Apple's accepted reasons only when actually applicable                 |
 
 - [ ] Approve a privacy policy matching actual collection, sharing, retention, deletion/contact procedures and local storage. Make it accessible as Apple requires, including within the app; this batch does not add a policy screen/link.
 - [ ] Complete App Store privacy labels from the final package and third parties. **Do not select “Data Not Collected” solely from the absence of accounts or gameplay APIs.**
@@ -45,5 +45,5 @@ Prepared 2026-10-28. Checklist only: no assets generated, public policy publishe
 - [Version metadata limits](https://developer.apple.com/help/app-store-connect/reference/app-information/platform-version-information)
 - [App privacy details](https://developer.apple.com/app-store/app-privacy-details/)
 - [Privacy manifest required-reason API guidance](https://developer.apple.com/documentation/technotes/tn3183-adding-required-reason-api-entries-to-your-privacy-manifest)
-- [WKWebView motion/orientation permission callback](https://developer.apple.com/documentation/webkit/wkuidelegate/webview(_:requestdeviceorientationandmotionpermissionfor:initiatedbyframe:decisionhandler:))
+- [WKWebView motion/orientation permission callback](<https://developer.apple.com/documentation/webkit/wkuidelegate/webview(_:requestdeviceorientationandmotionpermissionfor:initiatedbyframe:decisionhandler:)>)
 - [Review guidelines: privacy, permissions and minimum functionality](https://developer.apple.com/app-store/review/guidelines/)
