@@ -326,7 +326,8 @@ export function useTiltControls({ enabled, onUp, onDown, preferOn = false }: Opt
 
       const r = stepTilt(m, delta * dirRef.current, now);
       m = r.machine;
-      if (r.fire === "correct") cbs.current.onDown(); // DOWN = GOT IT!
+      if (r.fire === "correct")
+        cbs.current.onDown(); // DOWN = GOT IT!
       else if (r.fire === "pass") cbs.current.onUp(); // UP = PASS
     };
 
