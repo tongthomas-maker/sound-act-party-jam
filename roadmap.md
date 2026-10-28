@@ -25,3 +25,10 @@
 - [x] Provide disposable Mac workspace/config commands and static-only cold-start/audio/manual-scoring verifier.
 - [x] Record build restriction and separate actual evidence from unexecuted checks; no deployment or signing.
 - [ ] Execute experimental build and verifier on Mac: sandbox prohibits manual builds, including copied workspaces; no static artifact or offline cold-start result exists.
+
+## Release batch 04–17 — static client build check
+
+- [x] Re-checked static build feasibility: manual builds remain prohibited in this environment, including disposable workspaces; V1 source and production config unchanged.
+- [x] Re-ran full regressions: 138/138 passed across 12 files; no gameplay changes.
+- [x] Verified existing Mac commands and `docs/verify-static-0413.py` still match current UI labels (START GAME, READY!, 30s, GOT IT!/PASS, TIME! summary).
+- [ ] Execute experimental build and verifier on Mac: same owner blocker as batch 04–13; covers offline cold launch, local assets, scoring, audio after tap, and manual tilt fallback.
