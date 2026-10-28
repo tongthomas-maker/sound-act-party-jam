@@ -17,3 +17,11 @@
 - [x] Record static-build constraint: no manual experimental build allowed; no static artifact generated or production config changed.
 - [x] Write feasibility evidence and Mac/Xcode next steps; no native readiness claim or deployment.
 - [ ] Isolated static build/cold-start verification: blocked on a build-capable disposable workspace outside this restricted environment.
+
+## Release batch 04–13 — reproducible isolated static experiment
+
+- [x] Inspect prerender safety, installed wrapper options and local/remote startup dependencies.
+- [x] Execute full regressions: 138/138 passed across 12 files; no gameplay changes.
+- [x] Provide disposable Mac workspace/config commands and static-only cold-start/audio/manual-scoring verifier.
+- [x] Record build restriction and separate actual evidence from unexecuted checks; no deployment or signing.
+- [ ] Execute experimental build and verifier on Mac: sandbox prohibits manual builds, including copied workspaces; no static artifact or offline cold-start result exists.
