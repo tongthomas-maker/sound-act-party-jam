@@ -32,3 +32,10 @@
 - [x] Re-ran full regressions: 138/138 passed across 12 files; no gameplay changes.
 - [x] Verified existing Mac commands and `docs/verify-static-0413.py` still match current UI labels (START GAME, READY!, 30s, GOT IT!/PASS, TIME! summary).
 - [ ] Execute experimental build and verifier on Mac: same owner blocker as batch 04–13; covers offline cold launch, local assets, scoring, audio after tap, and manual tilt fallback.
+
+## Isolated local-font proof
+
+- [ ] Fetch pinned Anton/Archivo packages into temporary storage and verify included OFL licenses.
+- [ ] Verify all four font weights in two fresh browsers with outside requests blocked; preserve evidence.
+- [ ] Document reversible adoption without changing live source, dependencies or production configuration.
+- [ ] Run proof syntax checks and full game regressions.
