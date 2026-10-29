@@ -46,16 +46,20 @@ async def verify():
 
             await context.route("**/*", allow_local_only)
             page = await context.new_page()
-            page.on("pageerror", lambda error: errors.append(str(error)))
-            page.on("response", lambda response: (
-                local_failures.append(f"{response.status} {response.url}")
-                if response.url.startswith(ORIGIN) and response.status >= 400
-                else served.append(response.url) if response.url.startswith(ORIGIN) else None
-            ))
-            page.on("requestfailed", lambda request: (
-                local_failures.append(f"{request.url}: {request.failure}")
-                if request.url.startswith(ORIGIN) else None
-            ))
+            def watch(p, tag):
+                # Shared by both contexts so a fresh launch also reports missing assets.
+                p.on("pageerror", lambda error: errors.append(f"[{tag}] {error}"))
+                p.on("response", lambda response: (
+                    local_failures.append(f"[{tag}] {response.status} {response.url}")
+                    if response.url.startswith(ORIGIN) and response.status >= 400
+                    else served.append(response.url) if response.url.startswith(ORIGIN) else None
+                ))
+                p.on("requestfailed", lambda request: (
+                    local_failures.append(f"[{tag}] {request.url}: {request.failure}")
+                    if request.url.startswith(ORIGIN) else None
+                ))
+
+            watch(page, "first")
             response = await page.goto(ORIGIN, wait_until="domcontentloaded")
             assert response and response.status == 200, "Static root HTTP failure"
             await expect(page.get_by_role("button", name="START GAME", exact=True)).to_be_visible()
@@ -95,16 +99,23 @@ async def verify():
             got = page.get_by_role("button", name="Got it, plus one point", exact=True)
             passed = page.get_by_role("button", name="Pass, no point", exact=True)
             await expect(got).to_be_visible(timeout=15000)
+            # Deterministic readiness: feedback label proves acceptance; its reset
+            # (after the next card is shown and input unlocked) proves readiness.
             await got.click()
-            await page.wait_for_timeout(450)
+            await expect(got).to_have_text("✓ +1")
+            await expect(got).to_have_text("GOT IT!")
             await passed.click()
-            await page.wait_for_timeout(450)
+            await expect(passed).to_have_text("PASSED")
+            await expect(passed).to_have_text("PASS")
             audio_before = await page.evaluate("""() => ({
                 states: window.__staticAudio.contexts.map(c => c.state),
                 times: window.__staticAudio.contexts.map(c => c.currentTime),
                 starts: window.__staticAudio.starts
             })""")
-            await page.wait_for_timeout(300)
+            await page.wait_for_function(
+                "t => window.__staticAudio.contexts.every((c, i) => c.currentTime > t[i])",
+                arg=audio_before["times"],
+            )
             audio_after = await page.evaluate("() => window.__staticAudio.contexts.map(c => c.currentTime)")
             assert audio_before["states"] and all(s == "running" for s in audio_before["states"])
             assert audio_before["starts"] > 0, "No real oscillator playback scheduled"
@@ -121,10 +132,16 @@ async def verify():
             )
             await cold.route("**/*", allow_local_only)
             cold_page = await cold.new_page()
-            cold_page.on("pageerror", lambda error: errors.append(str(error)))
+            watch(cold_page, "cold")
+            served_before_cold = len(served)
             await cold_page.goto(ORIGIN, wait_until="domcontentloaded")
             await expect(cold_page.get_by_role("button", name="START GAME", exact=True)).to_be_visible()
             await cold_page.screenshot(path=str(EVIDENCE / "4-second-cold-start.png"))
+            await cold_page.wait_for_load_state("load")
+            cold_served = served[served_before_cold:]
+            assert any(".js" in u for u in cold_served), "Fresh launch served no local JavaScript"
+            assert any(".css" in u for u in cold_served), "Fresh launch served no local stylesheet"
+            assert not blocked, f"External requests were blocked (not self-contained): {blocked}"
             assert not errors, f"Page errors: {errors}"
             assert not local_failures, f"Missing/broken local assets: {local_failures}"
             assert any(".js" in url for url in served), "No local JavaScript served"

@@ -83,7 +83,7 @@ If a command fails, preserve the disposable workspace and log and **stop**. Do n
 
 The verifier requires root HTTP 200, visible setup, local JS/CSS, no failed local asset requests/page errors, two manually created players, a real tap to unlock Web Audio, a 30-second round, GOT IT! then PASS, and final **Points 1 / Passed 1 / Best streak 1**. It observes real AudioContext running state, advancing clock and oscillator starts without mocking playback. A second empty context checks cold startup again. Output includes screenshots, asset inventory and `static-evidence/result.json`. FAIL is saved even if the run raises an exception.
 
-External fonts are explicitly blocked and listed. A gameplay PASS with fallback fonts is **not** an all-assets-local/appearance PASS. Review emitted HTML/CSS and inventory for licensed font packaging needs before native packaging. Web Audio state is **not evidence of audible sound**; listen manually on Mac, then test physical iOS. No permission/sensor mock proves native permission behavior.
+Any blocked external request (including the current Google Fonts link) now makes the verifier FAIL; the list is saved in result.json. Expect FAIL until fonts are bundled locally. Review emitted HTML/CSS and inventory for licensed font packaging needs before native packaging. Web Audio state is **not evidence of audible sound**; listen manually on Mac, then test physical iOS. No permission/sensor mock proves native permission behavior.
 
 ## Owner result checklist / next gate
 
