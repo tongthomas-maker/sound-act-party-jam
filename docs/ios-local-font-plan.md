@@ -2,6 +2,8 @@
 
 2026-10-29 UTC. Plan only. No fonts downloaded, no source/config changed.
 
+**Subsequent isolated evidence:** `ios-local-font-proof.md` records an approved font-only download and two successful local/offline font launches. The statements below describe the original plan's state; production adoption is still not applied.
+
 ## Current usage
 - `src/routes/__root.tsx` loads Google Fonts: **Anton** (400) and **Archivo** (500/700/900).
 - `src/styles.css`: `--font-display: "Anton", "Archivo Black", …`; `--font-body: "Archivo", …`.

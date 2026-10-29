@@ -14,3 +14,4 @@
 - Local preferences go through `src/lib/prefs.ts` (validated parse, defaults on bad data); roster/selection stay in `src/lib/players.ts`.
 - Play screen cards come from `src/lib/playcards.ts` (one display shape for all modes incl. unlockable Quick Call) so the UI never branches on card source.
 - Tests run via `vitest.config.ts` (plain config, no app plugins); hook tests opt into jsdom per file. Why: the app's plugin chain breaks React hook rendering in tests.
+- Font packaging proofs live as standalone scripts in docs and write only to disposable workspaces; they must not import into app source or alter production dependencies, so release experiments cannot affect V1.
