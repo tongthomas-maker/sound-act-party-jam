@@ -35,7 +35,8 @@
 
 ## Isolated local-font proof
 
-- [ ] Fetch pinned Anton/Archivo packages into temporary storage and verify included OFL licenses.
-- [ ] Verify all four font weights in two fresh browsers with outside requests blocked; preserve evidence.
-- [ ] Document reversible adoption without changing live source, dependencies or production configuration.
-- [ ] Run proof syntax checks and full game regressions.
+- [x] Fetch pinned Anton/Archivo packages into temporary storage and verify included OFL licenses and registry integrity.
+- [x] Verify all four font weights in two fresh browsers with outside requests blocked: PASS, zero external requests or failures.
+- [x] Document reversible adoption without changing live source, dependencies or production configuration in docs/ios-local-font-proof.md.
+- [x] Run proof/verifier syntax checks and full game regressions: 138/138 tests across 12 files.
+- [ ] Production font adoption: requires separate owner approval; not needed to complete this isolated proof.
