@@ -40,3 +40,8 @@
 - [x] Document reversible adoption without changing live source, dependencies or production configuration in docs/ios-local-font-proof.md.
 - [x] Run proof/verifier syntax checks and full game regressions: 138/138 tests across 12 files.
 - [ ] Production font adoption: requires separate owner approval; not needed to complete this isolated proof.
+
+## Release batch 10–31 — offline preparation inspection
+
+- [ ] Inspect isolated packaging/verifier preparation and fix at most one confirmed issue without changing V1 or production configuration.
+- [ ] Run relevant script regressions/syntax checks and full game tests; report actual evidence and remaining Mac/native-device gates.
