@@ -18,7 +18,7 @@ ORIGIN = "http://localhost:8765"
 
 async def verify_fonts(page):
     """Require real custom faces; fallback text and fonts.check alone are insufficient."""
-    fonts = await page.evaluate("""async () => {
+    fonts = await page.evaluate(r"""async () => {
         await document.fonts.ready;
         const result = [];
         for (const [family, weights] of Object.entries({Anton:[400], Archivo:[500,700,900]})) {
