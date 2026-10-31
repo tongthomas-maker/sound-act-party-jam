@@ -57,3 +57,10 @@
 - [x] Inspect existing scripts and rerun permitted game/font checks; corrected only the reproduced verifier escape warning.
 - [x] Record exact executed results in docs/ios-final-static-result-1031.md: static verifier exit 1 on missing output; no static build/game browser checks executed; preserve Mac/device handoff.
 - [ ] Produce static output and strict whole-game offline evidence: blocked by the environment prohibition on manual builds, including disposable workspaces.
+
+## Final iOS one-command handoff
+
+- [x] Implement an isolated Mac command for licensed local fonts, real static build, strict offline verification, then native workspace preparation: docs/prepare-ios.py.
+- [x] Run only safe handoff fixture tests: 8/8 passed; two warning-strict syntax checks passed; managed-environment rejection exited 2. No game tests or font audits repeated.
+- [x] Document exact command, preserved evidence and unverified Mac/device gates in docs/ios-one-command-handoff.md.
+- [ ] Execute the real one-command handoff on Mac and return evidence: blocked here by manual-build restrictions; no static/native success asserted. Existing physical-device/signing gates remain external.
