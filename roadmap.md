@@ -51,3 +51,9 @@
 
 - [ ] Inspect remaining font/static verification gaps and correct only proven packaging defects in isolated tooling/instructions.
 - [ ] Run permitted deterministic checks and record the build restriction separately from actual executed results; preserve V1 and production settings.
+
+## Final static build deliverable
+
+- [ ] Inspect existing scripts and rerun permitted game/font checks; correct only reproduced tooling defects.
+- [ ] Record exact executed results separately from the prohibited static build/offline game verification, and preserve Mac/device handoff.
+- [ ] Produce static output and strict whole-game offline evidence: blocked by the environment prohibition on manual builds, including disposable workspaces.
