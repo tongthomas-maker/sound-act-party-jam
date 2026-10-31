@@ -58,7 +58,11 @@ async def run(site):
                 print(f"PASS: licensed local fonts, fresh launch {launch}")
                 if launch == 2:
                     # Simulate omitted declarations; fallback alone must not pass.
-                    await page.evaluate("() => document.fonts.clear()")
+                    await page.evaluate("""() => {
+                        for (const sheet of document.querySelectorAll('link[rel="stylesheet"], style')) {
+                            sheet.remove();
+                        }
+                    }""")
                     try:
                         await verifier.verify_fonts(page)
                     except AssertionError as error:
