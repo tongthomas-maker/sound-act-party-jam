@@ -57,3 +57,5 @@ python3 docs/test-ios-handoff.py -v
 ```
 
 These synthetic fixtures validate ordering, source preservation, exclusions and failure gates. They do not contain real game output or fonts and are not evidence of a static/native build.
+
+Executed here: **8/8 synthetic fixture tests PASS**, both new scripts pass warning-strict compilation, and invoking the real command in this restricted environment stops with exit **2** before creating a workspace. No 138-game-test rerun or licensed-font audit was performed. Managed build log reads OK at 2026-10-31T02:10:42Z; this is not experimental static/native output evidence.

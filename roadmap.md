@@ -60,6 +60,7 @@
 
 ## Final iOS one-command handoff
 
-- [ ] Implement an isolated Mac command for licensed local fonts, real static build, strict offline verification, then native workspace preparation.
-- [ ] Run only safe handoff fixture tests; do not repeat game tests or font audits.
-- [ ] Document exact command, preserved evidence and unverified Mac/device gates.
+- [x] Implement an isolated Mac command for licensed local fonts, real static build, strict offline verification, then native workspace preparation: docs/prepare-ios.py.
+- [x] Run only safe handoff fixture tests: 8/8 passed; two warning-strict syntax checks passed; managed-environment rejection exited 2. No game tests or font audits repeated.
+- [x] Document exact command, preserved evidence and unverified Mac/device gates in docs/ios-one-command-handoff.md.
+- [ ] Execute the real one-command handoff on Mac and return evidence: blocked here by manual-build restrictions; no static/native success asserted. Existing physical-device/signing gates remain external.
