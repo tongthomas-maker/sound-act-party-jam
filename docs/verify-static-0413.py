@@ -25,14 +25,20 @@ async def verify_fonts(page):
             for (const weight of weights) {
                 const spec = `${weight} 28px "${family}"`;
                 const faces = await document.fonts.load(spec, 'SOUND IT!');
+                const exactWeight = faces.length > 0 && faces.every(face => {
+                    const range = face.weight.trim().split(/\s+/).map(Number);
+                    return range.length === 1 ? range[0] === weight :
+                        range.length === 2 && range[0] <= weight && weight <= range[1];
+                });
                 result.push({family, weight, count: faces.length,
+                    declaredWeights: faces.map(face => face.weight), exactWeight,
                     loaded: faces.length > 0 && faces.every(face => face.status === 'loaded'),
                     check: document.fonts.check(spec, 'SOUND IT!')});
             }
         }
         return result;
     }""")
-    assert len(fonts) == 4 and all(f["loaded"] and f["check"] for f in fonts), (
+    assert len(fonts) == 4 and all(f["loaded"] and f["check"] and f["exactWeight"] for f in fonts), (
         f"Missing/unloaded bundled fonts: {fonts}"
     )
     return fonts

@@ -46,3 +46,8 @@
 - [x] Correct one verifier gap: require loaded bundled font faces in both fresh static launches, rejecting omitted declarations/system fallback.
 - [x] Run font-gate regressions (3/3), isolated licensed-font proof (2/2 launches), syntax checks (3 scripts), and full game tests (138/138 across 12 files); evidence and native gates in docs/ios-offline-review-1031.md.
 - [ ] Mac static-game build and physical installed-iOS QA remain blocked on owner execution outside this build-restricted environment; no V1/config changes or deployment.
+
+## Final coding-only offline preparation
+
+- [ ] Inspect remaining font/static verification gaps and correct only proven packaging defects in isolated tooling/instructions.
+- [ ] Run permitted deterministic checks and record the build restriction separately from actual executed results; preserve V1 and production settings.

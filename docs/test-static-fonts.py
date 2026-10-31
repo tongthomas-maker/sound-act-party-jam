@@ -57,6 +57,24 @@ async def run(site):
                 assert not blocked and not failures
                 print(f"PASS: licensed local fonts, fresh launch {launch}")
                 if launch == 2:
+                    # CSS matching must not substitute Archivo 700 for absent 900.
+                    await page.evaluate("""() => {
+                        for (const sheet of document.styleSheets) {
+                            for (let i = sheet.cssRules.length - 1; i >= 0; i--) {
+                                const rule = sheet.cssRules[i];
+                                if (rule.type === CSSRule.FONT_FACE_RULE &&
+                                    rule.style.fontFamily.replaceAll('"', '').toLowerCase() === 'archivo' &&
+                                    rule.style.fontWeight === '900') sheet.deleteRule(i);
+                            }
+                        }
+                    }""")
+                    try:
+                        await verifier.verify_fonts(page)
+                    except AssertionError as error:
+                        assert "Missing/unloaded bundled fonts" in str(error)
+                        print("PASS: missing Archivo 900 rejected despite available 500/700")
+                    else:
+                        raise AssertionError("Substitute font weight incorrectly passed")
                     # Simulate omitted declarations; fallback alone must not pass.
                     await page.evaluate("""() => {
                         for (const sheet of document.querySelectorAll('link[rel="stylesheet"], style')) {

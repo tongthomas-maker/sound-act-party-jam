@@ -32,6 +32,12 @@ shasum -a 256 "$SOURCE/vite.config.ts" > source-vite-before.sha256
 bun --version
 node --version
 bun install --frozen-lockfile
+# Required isolated font trial, NOT a production adoption. Retain OFL notices.
+# Follow steps 2–4 of docs/ios-local-font-proof.md in this disposable workspace:
+# pin Anton/Archivo 5.3.0, prepend the four package CSS imports before all
+# non-import CSS rules, remove only the Google stylesheet/two preconnects,
+# and copy both package LICENSE files into the candidate's public/licenses/.
+# Without this trial the verifier correctly FAILS the unchanged Google links.
 cat > vite.static-experiment.ts <<'TS'
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
@@ -85,7 +91,7 @@ The verifier requires root HTTP 200, visible setup, local JS/CSS, no failed loca
 
 Any blocked external request (including the current Google Fonts link) now makes the verifier FAIL; the list is saved in result.json. Expect FAIL until fonts are bundled locally. Review emitted HTML/CSS and inventory for licensed font packaging needs before native packaging. Web Audio state is **not evidence of audible sound**; listen manually on Mac, then test physical iOS. No permission/sensor mock proves native permission behavior.
 
-2026-10-31 verifier correction: both launches now explicitly require loaded Anton 400 and Archivo 500/700/900 faces. Removing font declarations no longer passes silently with system fallback. Multiple loaded subset faces are supported; this checks availability, not visual parity or inclusion of license notices. Font results are saved as `first_launch_fonts` and `cold_launch_fonts`. Run the isolated regression after the font proof with `python3 docs/test-static-fonts.py --font-site /absolute/path/to/proof/site`; no game build is needed.
+2026-10-31 verifier correction: both launches now explicitly require loaded Anton 400 and Archivo 500/700/900 faces covering the requested weight (an exact declared weight or containing variable-weight range). Removing font declarations or substituting Archivo 700 for missing 900 no longer passes silently. Multiple loaded subset faces are supported; this checks availability, not visual parity or inclusion of license notices. Font results and declared weights are saved as `first_launch_fonts` and `cold_launch_fonts`. Run the isolated regression after the font proof with `python3 docs/test-static-fonts.py --font-site /absolute/path/to/proof/site`; no game build is needed.
 
 ## Owner result checklist / next gate
 
