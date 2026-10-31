@@ -49,11 +49,11 @@
 
 ## Final coding-only offline preparation
 
-- [ ] Inspect remaining font/static verification gaps and correct only proven packaging defects in isolated tooling/instructions.
-- [ ] Run permitted deterministic checks and record the build restriction separately from actual executed results; preserve V1 and production settings.
+- [x] Inspect remaining font/static verification gaps; reject substituted font weights and correct the reproduced Python regex escape warning in isolated tooling only.
+- [x] Run permitted deterministic checks: 138/138 game tests, 2/2 font launches, 4/4 font-gate regressions and three warning-strict script compilations; preserve V1 and production settings.
 
 ## Final static build deliverable
 
-- [ ] Inspect existing scripts and rerun permitted game/font checks; correct only reproduced tooling defects.
-- [ ] Record exact executed results separately from the prohibited static build/offline game verification, and preserve Mac/device handoff.
+- [x] Inspect existing scripts and rerun permitted game/font checks; corrected only the reproduced verifier escape warning.
+- [x] Record exact executed results in docs/ios-final-static-result-1031.md: static verifier exit 1 on missing output; no static build/game browser checks executed; preserve Mac/device handoff.
 - [ ] Produce static output and strict whole-game offline evidence: blocked by the environment prohibition on manual builds, including disposable workspaces.
