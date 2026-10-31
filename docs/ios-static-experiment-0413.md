@@ -85,6 +85,8 @@ The verifier requires root HTTP 200, visible setup, local JS/CSS, no failed loca
 
 Any blocked external request (including the current Google Fonts link) now makes the verifier FAIL; the list is saved in result.json. Expect FAIL until fonts are bundled locally. Review emitted HTML/CSS and inventory for licensed font packaging needs before native packaging. Web Audio state is **not evidence of audible sound**; listen manually on Mac, then test physical iOS. No permission/sensor mock proves native permission behavior.
 
+2026-10-31 verifier correction: both launches now explicitly require loaded Anton 400 and Archivo 500/700/900 faces. Removing font declarations no longer passes silently with system fallback. Multiple loaded subset faces are supported; this checks availability, not visual parity or inclusion of license notices. Font results are saved as `first_launch_fonts` and `cold_launch_fonts`. Run the isolated regression after the font proof with `python3 docs/test-static-fonts.py --font-site /absolute/path/to/proof/site`; no game build is needed.
+
 ## Owner result checklist / next gate
 
 - [ ] Build exits 0 and newly emits `dist/client/index.html`; preserve complete log and warnings.
