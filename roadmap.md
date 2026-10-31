@@ -43,5 +43,6 @@
 
 ## Release batch 10–31 — offline preparation inspection
 
-- [ ] Inspect isolated packaging/verifier preparation and fix at most one confirmed issue without changing V1 or production configuration.
-- [ ] Run relevant script regressions/syntax checks and full game tests; report actual evidence and remaining Mac/native-device gates.
+- [x] Correct one verifier gap: require loaded bundled font faces in both fresh static launches, rejecting omitted declarations/system fallback.
+- [x] Run font-gate regressions (3/3), isolated licensed-font proof (2/2 launches), syntax checks (3 scripts), and full game tests (138/138 across 12 files); evidence and native gates in docs/ios-offline-review-1031.md.
+- [ ] Mac static-game build and physical installed-iOS QA remain blocked on owner execution outside this build-restricted environment; no V1/config changes or deployment.
