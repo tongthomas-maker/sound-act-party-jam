@@ -16,6 +16,28 @@ EVIDENCE = Path("static-evidence").resolve()
 ORIGIN = "http://localhost:8765"
 
 
+async def verify_fonts(page):
+    """Require real custom faces; fallback text and fonts.check alone are insufficient."""
+    fonts = await page.evaluate("""async () => {
+        await document.fonts.ready;
+        const result = [];
+        for (const [family, weights] of Object.entries({Anton:[400], Archivo:[500,700,900]})) {
+            for (const weight of weights) {
+                const spec = `${weight} 28px "${family}"`;
+                const faces = await document.fonts.load(spec, 'SOUND IT!');
+                result.push({family, weight, count: faces.length,
+                    loaded: faces.length > 0 && faces.every(face => face.status === 'loaded'),
+                    check: document.fonts.check(spec, 'SOUND IT!')});
+            }
+        }
+        return result;
+    }""")
+    assert len(fonts) == 4 and all(f["loaded"] and f["check"] for f in fonts), (
+        f"Missing/unloaded bundled fonts: {fonts}"
+    )
+    return fonts
+
+
 async def verify():
     if not (ROOT / "index.html").is_file():
         raise RuntimeError("Missing dist/client/index.html; stop, do not serve development HTML")
@@ -63,6 +85,7 @@ async def verify():
             response = await page.goto(ORIGIN, wait_until="domcontentloaded")
             assert response and response.status == 200, "Static root HTTP failure"
             await expect(page.get_by_role("button", name="START GAME", exact=True)).to_be_visible()
+            report["first_launch_fonts"] = await verify_fonts(page)
             await page.screenshot(path=str(EVIDENCE / "1-cold-start.png"))
 
             # Installed after navigation, before the app's first audio-unlocking tap.
@@ -136,6 +159,7 @@ async def verify():
             served_before_cold = len(served)
             await cold_page.goto(ORIGIN, wait_until="domcontentloaded")
             await expect(cold_page.get_by_role("button", name="START GAME", exact=True)).to_be_visible()
+            report["cold_launch_fonts"] = await verify_fonts(cold_page)
             await cold_page.screenshot(path=str(EVIDENCE / "4-second-cold-start.png"))
             await cold_page.wait_for_load_state("load")
             cold_served = served[served_before_cold:]
@@ -156,4 +180,5 @@ async def verify():
         print(json.dumps(report, indent=2))
 
 
-asyncio.run(verify())
+if __name__ == "__main__":
+    asyncio.run(verify())
