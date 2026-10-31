@@ -16,3 +16,4 @@
 - Tests run via `vitest.config.ts` (plain config, no app plugins); hook tests opt into jsdom per file. Why: the app's plugin chain breaks React hook rendering in tests.
 - Font packaging proofs live as standalone scripts in docs and write only to disposable workspaces; they must not import into app source or alter production dependencies, so release experiments cannot affect V1.
 - Static-verifier font regressions import its guarded entry point and use licensed proof fixtures in disposable storage; require actual loaded faces covering each requested weight in both fresh contexts so fallback or weight substitution cannot mask omitted font assets.
+- The Mac iOS orchestrator operates only on fresh exported-source copies and gates separate native workspace creation on strict static verifier PASS; fixture tests inject command execution so restricted environments never need to build or claim native acceptance.

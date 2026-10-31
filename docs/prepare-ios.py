@@ -183,8 +183,12 @@ def run_handoff(source, work, app_id, run):
         run("native-sync", [str(native / "node_modules/.bin/cap"), "sync", "ios"], native)
         if source_hashes(native / "www") != inventory:
             raise RuntimeError("Native web assets differ from verified static bundle")
-        if source_hashes(native / "ios/App/App/public") != inventory:
+        synced = source_hashes(native / "ios/App/App/public")
+        if any(synced.get(name) != digest for name, digest in inventory.items()):
             raise RuntimeError("Synced iOS assets differ from verified static bundle")
+        if set(synced) - set(inventory) - {"capacitor.js", "capacitor_plugins.js", "cordova.js", "cordova_plugins.js"}:
+            raise RuntimeError("Unexpected added native web assets; review inventory")
+        (work / "native-inventory.json").write_text(json.dumps(synced, indent=2))
         if not (native / "ios/App/App.xcworkspace").is_dir():
             raise RuntimeError("CocoaPods Xcode workspace missing")
         return {"status": "STATIC_PASS_NATIVE_WORKSPACE_PREPARED", "native_build": "NOT_RUN",
@@ -199,7 +203,7 @@ def main():
     parser.add_argument("--source", type=Path, default=Path(__file__).resolve().parents[1])
     parser.add_argument("--app-id", required=True, help="Owner-chosen Apple bundle identifier; no registration performed")
     args = parser.parse_args()
-    if platform.system() != "Darwin" or any(os.environ.get(k) for k in ("LOVABLE_SANDBOX", "SANDBOX")):
+    if platform.system() != "Darwin" or any(os.environ.get(k) for k in ("LOVABLE_SANDBOX", "SANDBOX", "DEV_SERVER__PROJECT_PATH")):
         parser.error("Run only in an unrestricted Mac Terminal, never in the managed Lovable environment")
     if sys.version_info < (3, 10):
         parser.error("Python 3.10+ required")
@@ -221,7 +225,7 @@ def main():
     print(f"Preserved workspace: {work}", flush=True)
     env = dict(os.environ)
     for key in list(env):
-        if key in ("LOVABLE_SANDBOX", "SANDBOX", "TSS_PRERENDERING", "NODE_ENV") or key.startswith(("VITE_", "CLOUDFLARE_")):
+        if key in ("LOVABLE_SANDBOX", "SANDBOX", "DEV_SERVER__PROJECT_PATH", "TSS_PRERENDERING", "NODE_ENV") or key.startswith(("VITE_", "CLOUDFLARE_")):
             env.pop(key)
     stages = []
     def run(stage, command, cwd):
