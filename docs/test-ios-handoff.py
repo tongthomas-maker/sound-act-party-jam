@@ -48,6 +48,8 @@ class HandoffTests(unittest.TestCase):
         self.external_asset = False
         self.offline_fail = False
         self.tamper_native = False
+        self.drop_manifest = False
+        self.extra_plugin = False
 
     def fake_run(self, stage, command, cwd):
         self.stages.append(stage)
@@ -80,6 +82,17 @@ class HandoffTests(unittest.TestCase):
                 "local_failures": [], "page_errors": [], "first_launch_fonts": faces,
                 "cold_launch_fonts": faces, "summary": {"points": 1, "passed": 1, "best_streak": 1},
             }))
+        elif stage == "native-install":
+            manifest = plistlib.dumps({"NSPrivacyTracking": False, "NSPrivacyAccessedAPITypes": [],
+                                       "NSPrivacyCollectedDataTypes": [], "NSPrivacyTrackingDomains": []})
+            for rel in handoff.SDK_MANIFESTS[: 1 if self.drop_manifest else 2]:
+                path = cwd / "node_modules/@capacitor/ios" / rel
+                path.parent.mkdir(parents=True)
+                path.write_bytes(manifest)
+            if self.extra_plugin:
+                pkg = json.loads((cwd / "package.json").read_text())
+                pkg["dependencies"]["@capacitor/motion"] = "7.0.0"
+                (cwd / "package.json").write_text(json.dumps(pkg))
         elif stage == "native-add":
             app = cwd / "ios/App/App"
             app.mkdir(parents=True)
@@ -161,6 +174,22 @@ class HandoffTests(unittest.TestCase):
     def test_synced_asset_tampering_rejected(self):
         self.tamper_native = True
         with self.assertRaisesRegex(RuntimeError, "Synced iOS assets differ"):
+            self.execute()
+
+    def test_sdk_privacy_manifests_recorded_verbatim(self):
+        self.execute()
+        report = json.loads((self.work / "sdk-privacy-manifests.json").read_text())
+        self.assertEqual(set(report), set(handoff.SDK_MANIFESTS))
+        self.assertIs(report[handoff.SDK_MANIFESTS[0]]["declared"]["NSPrivacyTracking"], False)
+
+    def test_missing_sdk_manifest_fails_closed(self):
+        self.drop_manifest = True
+        with self.assertRaisesRegex(RuntimeError, "privacy manifest missing"):
+            self.execute()
+
+    def test_unreviewed_native_plugin_fails_closed(self):
+        self.extra_plugin = True
+        with self.assertRaisesRegex(RuntimeError, "Unreviewed native dependencies"):
             self.execute()
 
     def test_changed_font_source_fails_closed(self):

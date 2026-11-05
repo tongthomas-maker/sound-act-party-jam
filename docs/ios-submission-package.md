@@ -39,7 +39,7 @@ Do not claim AI judging, online multiplayer, accounts or stats.
 | Motion sensor | Read on device for tilt scoring; optional; not transmitted | WKWebView prompt behavior |
 | Fonts | Live app loads Google Fonts; `prepare-ios.py` bundles them locally for native | Confirm packaged build makes zero font requests (static verifier) |
 | Error reporting | `reportLovableError` forwards to injected runtime hooks if present | Whether any hook exists in native build; recipients/retention |
-| Native SDKs (Capacitor 7.4.3) | Not yet inventoried | Privacy manifests / required-reason APIs from Xcode privacy report |
+| Native SDKs (Capacitor 7.4.3) | Only `@capacitor/core`/`ios`/`cli`; Capacitor and CapacitorCordova pods ship `PrivacyInfo.xcprivacy` (tracking false, no required-reason APIs, no collected data as vendor-declared). `prepare-ios.py` fails on any other native dependency or a missing manifest and writes `sdk-privacy-manifests.json` | Xcode archive privacy report; whether an app-level manifest is needed |
 | Share button | Uses system share sheet, user-initiated | — |
 
 **Do not select "Data Not Collected" until the Unknown column is resolved** from the actual packaged build. Tracking/ATT: none expected; confirm from final package.

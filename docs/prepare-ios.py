@@ -178,6 +178,30 @@ def install_icon(native, icon):
     return digest
 
 
+SDK_MANIFESTS = ("Capacitor/Capacitor/PrivacyInfo.xcprivacy",
+                 "CapacitorCordova/CapacitorCordova/PrivacyInfo.xcprivacy")
+ALLOWED_NATIVE_DEPS = {"@capacitor/core", "@capacitor/ios", "@capacitor/cli"}
+
+
+def check_sdk_privacy(native):
+    """Fail closed unless the only native SDKs are Capacitor core/iOS and each ships its manifest.
+    Records the vendor declarations verbatim; adds no app-level claims."""
+    pkg = json.loads((native / "package.json").read_text())
+    deps = set(pkg.get("dependencies", {})) | set(pkg.get("devDependencies", {}))
+    if deps - ALLOWED_NATIVE_DEPS:
+        raise RuntimeError(f"Unreviewed native dependencies: {sorted(deps - ALLOWED_NATIVE_DEPS)}")
+    report = {}
+    for rel in SDK_MANIFESTS:
+        path = native / "node_modules/@capacitor/ios" / rel
+        if not path.is_file():
+            raise RuntimeError(f"Capacitor privacy manifest missing: {rel}")
+        data = plistlib.loads(path.read_bytes())
+        if not isinstance(data.get("NSPrivacyTracking"), bool) or not isinstance(data.get("NSPrivacyAccessedAPITypes"), list):
+            raise RuntimeError(f"Malformed privacy manifest: {rel}")
+        report[rel] = {"sha256": hashlib.sha256(path.read_bytes()).hexdigest(), "declared": data}
+    return report
+
+
 def run_handoff(source, work, app_id, run):
     """Injectable command runner allows fail-closed fixture tests without any build."""
     before = source_hashes(source)
@@ -220,6 +244,7 @@ def run_handoff(source, work, app_id, run):
         if set(synced) - set(inventory) - {"capacitor.js", "capacitor_plugins.js", "cordova.js", "cordova_plugins.js"}:
             raise RuntimeError("Unexpected added native web assets; review inventory")
         (work / "native-inventory.json").write_text(json.dumps(synced, indent=2))
+        (work / "sdk-privacy-manifests.json").write_text(json.dumps(check_sdk_privacy(native), indent=2))
         if not (native / "ios/App/App.xcworkspace").is_dir():
             raise RuntimeError("CocoaPods Xcode workspace missing")
         return {"status": "STATIC_PASS_NATIVE_WORKSPACE_PREPARED", "native_build": "NOT_RUN",
