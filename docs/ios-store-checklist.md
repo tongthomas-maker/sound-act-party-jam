@@ -5,7 +5,7 @@ Prepared 2026-10-28. Checklist only: no assets generated, public policy publishe
 ## Assets and metadata
 
 - [ ] Confirm seller/legal entity, app-name availability, bundle ID, version, copyright/content rights, distribution regions and languages. No invented identity/contact details.
-- [ ] Prepare the 1024 × 1024 App Store icon and native icon catalog using current Xcode/Apple requirements; do not treat `public/favicon.ico` as the native icon. Validate final format/transparency in Xcode/App Store Connect.
+- [~] 1024 × 1024 icon prepared at `docs/ios-assets/AppIcon-1024.png` and installed by `prepare-ios.py` (owner art approval + Xcode/App Store Connect validation pending). Prepare the 1024 × 1024 App Store icon and native icon catalog using current Xcode/Apple requirements; do not treat `public/favicon.ico` as the native icon. Validate final format/transparency in Xcode/App Store Connect.
 - [ ] Capture authentic final-app screenshots of setup, actual gameplay and results. Current Apple specifications require at least one iPhone Dynamic Island (medium display) screenshot, plus one iPad 13-inch screenshot when iPadOS is supported. Follow the live table for exact pixels; iPad mini QA screenshots do not replace the required store-size assets. PNG/JPEG; 1–10 screenshots per supported size; avoid claiming unsupported functionality.
 - [ ] App name: 2–30 characters. Candidate from existing branding: **Sound It!** (availability unverified).
 - [ ] Subtitle: ≤30 characters; promotional text: ≤170; description: ≤4,000; keywords: ≤100 bytes. Owner approves final copy; no claim of AI judging, online multiplayer, accounts or monetization.

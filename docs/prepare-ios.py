@@ -149,11 +149,41 @@ def prepare_native(native, bundle, app_id):
     }, indent=2) + "\n")
 
 
+ICON = "docs/ios-assets/AppIcon-1024.png"
+
+
+def check_icon(path):
+    """Fail closed unless the icon is a 1024x1024 opaque 8-bit RGB PNG (no alpha)."""
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n" or data[12:16] != b"IHDR":
+        raise RuntimeError("App icon is not a PNG")
+    width, height = int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
+    if (width, height) != (1024, 1024) or data[24] != 8 or data[25] != 2:
+        raise RuntimeError("App icon must be 1024x1024 8-bit RGB without transparency")
+    return hashlib.sha256(data).hexdigest()
+
+
+def install_icon(native, icon):
+    digest = check_icon(icon)
+    iconset = native / "ios/App/App/Assets.xcassets/AppIcon.appiconset"
+    if iconset.exists():
+        shutil.rmtree(iconset)
+    iconset.mkdir(parents=True)
+    shutil.copyfile(icon, iconset / "AppIcon-1024.png")
+    (iconset / "Contents.json").write_text(json.dumps({
+        "images": [{"filename": "AppIcon-1024.png", "idiom": "universal",
+                    "platform": "ios", "size": "1024x1024"}],
+        "info": {"author": "xcode", "version": 1},
+    }, indent=2) + "\n")
+    return digest
+
+
 def run_handoff(source, work, app_id, run):
     """Injectable command runner allows fail-closed fixture tests without any build."""
     before = source_hashes(source)
     candidate = work / "candidate"
     shutil.copytree(source, candidate, ignore=ignored)
+    check_icon(candidate / ICON)
     try:
         run("install-locked", ["bun", "install", "--frozen-lockfile"], candidate)
         run("install-fonts", ["bun", "add", "--exact", "@fontsource/anton@5.3.0", "@fontsource/archivo@5.3.0"], candidate)
@@ -180,6 +210,7 @@ def run_handoff(source, work, app_id, run):
         info["UISupportedInterfaceOrientations"] = orientations
         info["UISupportedInterfaceOrientations~ipad"] = orientations
         plist.write_bytes(plistlib.dumps(info))
+        icon_sha256 = install_icon(native, candidate / ICON)
         run("native-sync", [str(native / "node_modules/.bin/cap"), "sync", "ios"], native)
         if source_hashes(native / "www") != inventory:
             raise RuntimeError("Native web assets differ from verified static bundle")
@@ -192,7 +223,7 @@ def run_handoff(source, work, app_id, run):
         if not (native / "ios/App/App.xcworkspace").is_dir():
             raise RuntimeError("CocoaPods Xcode workspace missing")
         return {"status": "STATIC_PASS_NATIVE_WORKSPACE_PREPARED", "native_build": "NOT_RUN",
-                "device_checks": "NOT_RUN", "workspace": str(native / "ios/App/App.xcworkspace")}
+                "device_checks": "NOT_RUN", "app_icon_sha256": icon_sha256, "workspace": str(native / "ios/App/App.xcworkspace")}
     finally:
         if source_hashes(source) != before:
             raise RuntimeError("Source changed during handoff; inspect before continuing")
@@ -210,7 +241,7 @@ def main():
     if not re.fullmatch(r"[A-Za-z][A-Za-z0-9-]*(?:\.[A-Za-z][A-Za-z0-9-]*){2,}", args.app_id):
         parser.error("Use a real reverse-domain bundle identifier, e.g. com.yourcompany.soundit")
     source = args.source.resolve()
-    for required in ("bun.lock", "package.json", "src/routes/__root.tsx", "src/styles.css", "docs/verify-static-0413.py"):
+    for required in ("bun.lock", "package.json", "src/routes/__root.tsx", "src/styles.css", "docs/verify-static-0413.py", ICON):
         if not (source / required).is_file():
             parser.error(f"Incomplete exported source: missing {required}")
     for tool in ("bun", "node", "npm", "xcodebuild", "pod"):

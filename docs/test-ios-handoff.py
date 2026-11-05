@@ -32,6 +32,9 @@ class HandoffTests(unittest.TestCase):
 ''')
         (self.source / "src/styles.css").write_text('@import "tailwindcss";\n@source "../src";\n')
         (self.source / "bun.lock").write_text("fixture lock, not installable")
+        (self.source / "docs/ios-assets").mkdir(parents=True)
+        shutil.copyfile(Path(__file__).with_name("ios-assets") / "AppIcon-1024.png",
+                        self.source / handoff.ICON)
         for folder in (".git", "nested/.git", "node_modules", "dist"):
             path = self.source / folder
             path.mkdir(parents=True)
@@ -103,8 +106,26 @@ class HandoffTests(unittest.TestCase):
         self.assertNotIn("server", config)
         info = plistlib.loads((self.work / "native/ios/App/App/Info.plist").read_bytes())
         self.assertIn("UIInterfaceOrientationLandscapeRight", info["UISupportedInterfaceOrientations~ipad"])
+        iconset = self.work / "native/ios/App/App/Assets.xcassets/AppIcon.appiconset"
+        contents = json.loads((iconset / "Contents.json").read_text())
+        self.assertEqual(contents["images"][0]["size"], "1024x1024")
+        self.assertEqual((iconset / "AppIcon-1024.png").read_bytes(), (self.source / handoff.ICON).read_bytes())
         for path in (".git", "nested/.git", ".env"):
             self.assertFalse((self.work / "candidate" / path).exists())
+
+    def test_transparent_or_wrong_size_icon_stops_before_install(self):
+        import struct, zlib
+        def png(w, h, color_type):
+            ihdr = struct.pack(">IIBBBBB", w, h, 8, color_type, 0, 0, 0)
+            chunk = struct.pack(">I", 13) + b"IHDR" + ihdr + struct.pack(">I", zlib.crc32(b"IHDR" + ihdr))
+            return b"\x89PNG\r\n\x1a\n" + chunk
+        for data in (png(1024, 1024, 6), png(512, 512, 2)):
+            (self.source / handoff.ICON).write_bytes(data)
+            shutil.rmtree(self.work / "candidate", ignore_errors=True)
+            self.stages.clear()
+            with self.assertRaisesRegex(RuntimeError, "1024x1024 8-bit RGB"):
+                self.execute()
+            self.assertEqual(self.stages, [])
 
     def test_failed_build_never_verifies_or_creates_native(self):
         self.fail_stage = "static-build"
