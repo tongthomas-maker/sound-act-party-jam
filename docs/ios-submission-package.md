@@ -10,7 +10,7 @@
 | Subtitle (≤30) | `Pass-the-Phone Party Game` (25) | title in `src/routes/index.tsx` |
 | Promotional text (≤170) | `Make the sound, act it out, guess it fast. A fast party game for one phone and a whole room.` | og:description |
 | Description (≤4000) | See below | modes/categories/settings in source |
-| Keywords (≤100 bytes) | `party,charades,sounds,guessing,group,family,game night,act,friends,pass the phone` (83) | — |
+| Keywords (≤100 bytes) | `party,charades,sounds,guessing,group,family,game night,act,friends,pass the phone` (81) | — |
 | Category | Games → Party / Word (owner choice) | — |
 | Age rating | OPEN — answer Apple questionnaire against full prompt deck in `src/lib/cards.ts` | — |
 | Support URL / Privacy URL | OPEN — no pages exist; owner must provide | — |
