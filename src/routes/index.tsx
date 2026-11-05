@@ -60,6 +60,9 @@ import {
 } from "@/lib/players";
 import { useTiltControls } from "@/hooks/use-tilt-controls";
 import { useFullscreen, useIsLandscape } from "@/hooks/use-fullscreen";
+import { showTiltDiagnostics } from "@/lib/diagnostics";
+
+const SHOW_DIAG = showTiltDiagnostics();
 import {
   hapticGotIt,
   hapticPass,
@@ -702,7 +705,7 @@ function SoundItGame() {
               ⏱ {formatClock(secondsLeft)}
             </span>
             <span className="rounded-full bg-white/10 px-3 py-1">✓ {stats.correct + bonus}</span>
-            {tilt.motionOn && tilt.debug && (
+            {SHOW_DIAG && tilt.motionOn && tilt.debug && (
               <span
                 data-testid="tilt-debug"
                 className="pointer-events-none fixed left-1 top-1 z-50 rounded bg-black/50 px-1.5 py-0.5 font-mono text-[10px] leading-tight tabular-nums text-white/70"
@@ -710,7 +713,7 @@ function SoundItGame() {
                 {`Flick ${tilt.debug.tiltDeg}°/s · Angle Δ${tilt.debug.delta}° · ${tilt.debug.device ?? ""} · ${tilt.debug.state}`}
               </span>
             )}
-            {tilt.motionOn && (
+            {SHOW_DIAG && tilt.motionOn && (
               <button
                 type="button"
                 onClick={tilt.toggleSwap}
@@ -720,7 +723,7 @@ function SoundItGame() {
                 ⇅ {tilt.swapped ? "Swapped (this device)" : "SWAP FOR THIS DEVICE"}
               </button>
             )}
-            {tilt.motionOn && (
+            {SHOW_DIAG && tilt.motionOn && (
               <button
                 type="button"
                 onClick={() => tilt.autoCalibrate()}
