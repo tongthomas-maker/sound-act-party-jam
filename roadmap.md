@@ -64,3 +64,4 @@
 - [x] Run only safe handoff fixture tests: 8/8 passed; two warning-strict syntax checks passed; managed-environment rejection exited 2. No game tests or font audits repeated.
 - [x] Document exact command, preserved evidence and unverified Mac/device gates in docs/ios-one-command-handoff.md.
 - [ ] Execute the real one-command handoff on Mac and return evidence: blocked here by manual-build restrictions; no static/native success asserted. Existing physical-device/signing gates remain external.
+- [x] 2026-11-05: Production App Store icon + native icon catalog step in Mac handoff (9/9 fixtures). Open: owner art approval; Xcode/App Store Connect validation on Mac.
