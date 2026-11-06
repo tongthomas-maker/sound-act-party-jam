@@ -182,7 +182,7 @@ describe("v16 tilt state machine (no WAIT_FOR_RETURN, rebase after lock)", () =>
     expect(run(ready(), 18, 900).fire).toBeNull();
   });
   it("locks 600ms then goes directly to READY (no return-to-zero needed)", () => {
-    let m = run(ready(), 25, 1000).machine;
+    const m = run(ready(), 25, 1000).machine;
     expect(run(m, -30, 1500).machine.phase).toBe("LOCKED");
     const r = run(m, 40, 1600); // lock over, still held down
     expect(r.fire).toBeNull();
@@ -199,7 +199,7 @@ describe("v16 tilt state machine (no WAIT_FOR_RETURN, rebase after lock)", () =>
     expect(run(next.machine, 40, 1800).fire).toBeNull(); // still locked
   });
   it("never fires during LOCKED even on wild swings", () => {
-    let m = run(ready(), 25, 1000).machine;
+    const m = run(ready(), 25, 1000).machine;
     expect(run(m, -45, 1200).fire).toBeNull();
     expect(run(m, 45, 1300).fire).toBeNull();
     expect(run(m, -45, 1599).fire).toBeNull();

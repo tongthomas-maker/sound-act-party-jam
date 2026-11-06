@@ -75,5 +75,4 @@ describe("rotation mid-turn (synthetic)", () => {
     // un-mirrored reading on the 270 side would wrongly PASS
     expect(stepTilt(ready(), -25, 1000).fire).toBe("pass");
   });
-
 });
